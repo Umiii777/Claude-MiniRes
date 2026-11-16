@@ -3,57 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#16221f">
+<meta name="theme-color" content="#f4f4f4">
 <title>一间小馆</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
-  <main id="stage"><canvas id="cv"></canvas></main>
-
-  <section id="tl" class="hudbox" aria-label="资金">
-    <div class="res" title="现金"><i>💰</i><b id="s-cash" class="num">¥0</b></div>
-    <div class="res" id="st-rent" title="本周房租，周日 22:00 自动扣"><i>🏠</i><b id="s-rent" class="num">¥0</b><small id="s-left"></small></div>
-    <div class="res" id="st-after" title="扣租后结余：现金减去本周房租"><i>🧾</i><b id="s-after" class="num">¥0</b></div>
-    <div class="res" title="口碑：决定明天来多少客人"><i>⭐</i><b id="s-rep" class="num">0</b><small id="s-seats"></small></div>
-  </section>
-
-  <section id="trc">
-    <button type="button" id="buyout" class="hudbox" data-act="buyoutOpen" title="买断进度：攒够 ¥24,000 向房东买下店铺">
-      <i>🔑</i><span class="bar"><i id="b-fill"></i></span><span id="b-text" class="num"></span>
-    </button>
+  <aside id="side">
+    <div id="clockbox" class="box" title="">
+      <svg viewBox="0 0 100 100" id="dial" aria-hidden="true">
+        <circle cx="50" cy="50" r="46" class="rim"/><circle cx="50" cy="50" r="37" class="face"/>
+        <g class="ticks"><path d="M50 17v5M83 50h-5M50 83v-5M17 50h5"/></g>
+        <g class="ticks s"><path d="M66.5 21.4l-1.5 2.6M78.6 33.5l-2.6 1.5M78.6 66.5l-2.6-1.5M66.5 78.6l-1.5-2.6M33.5 78.6l1.5-2.6M21.4 66.5l2.6-1.5M21.4 33.5l2.6 1.5M33.5 21.4l1.5 2.6"/></g>
+        <path id="lunch-arc" class="arc"/><path id="dinner-arc" class="arc"/>
+        <line id="hand-h" x1="50" y1="50" x2="50" y2="31" class="hand h"/><line id="hand-m" x1="50" y1="50" x2="50" y2="20" class="hand m"/>
+        <circle cx="50" cy="50" r="3.2" class="pin"/>
+      </svg>
+      <i id="d-ev"></i>
+    </div>
+    <div id="datebox" class="box"><b id="d-day"></b><span id="d-time" class="num"></span><i id="d-phase" class="chip"></i><small id="d-week"></small></div>
+    <div id="goalbox" class="box">
+      <ul id="goal"></ul>
+      <button type="button" id="goal-tog" data-act="goalToggle" title="展开 / 收起目标">▼</button>
+    </div>
     <div id="alert" hidden></div>
-    <div id="goal"></div>
     <div id="coach" hidden></div>
-  </section>
-
-  <div id="toasts" aria-live="polite"></div>
-  <div id="pop" class="hudbox" hidden></div>
-  <aside id="sheet" class="hudbox" hidden>
-    <header><h2 id="sh-title"></h2><div id="sh-tabs"></div><button type="button" class="x" data-act="close" aria-label="关闭">✕</button></header>
-    <div id="sh-body"></div>
+    <div class="grow"></div>
+    <section id="tl" class="box" aria-label="资金">
+      <div class="res" title="现金"><i>💰</i><b id="s-cash" class="num">¥0</b></div>
+      <div class="res" id="st-rent" title="本周房租，周日 22:00 自动扣"><i>🏠</i><b id="s-rent" class="num">¥0</b><small id="s-left"></small></div>
+      <div class="res" id="st-after" title="扣租后结余：现金减去本周房租"><i>🧾</i><b id="s-after" class="num">¥0</b></div>
+      <div class="res" title="口碑：决定明天来多少客人"><i>⭐</i><b id="s-rep" class="num">0</b><small id="s-seats"></small></div>
+      <button type="button" id="buyout" data-act="buyoutOpen" title="买断进度：攒够 ¥24,000 向房东买下店铺">
+        <i>🔑</i><span class="bar"><i id="b-fill"></i></span><span id="b-text" class="num"></span>
+      </button>
+    </section>
   </aside>
-  <div id="placebar" hidden></div>
+
+  <div id="main">
+    <main id="stage"><canvas id="cv"></canvas></main>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="pop" class="hudbox" hidden></div>
+    <aside id="sheet" class="hudbox" hidden>
+      <header><h2 id="sh-title"></h2><div id="sh-tabs"></div><button type="button" class="x" data-act="close" aria-label="关闭">✕</button></header>
+      <div id="sh-body"></div>
+    </aside>
+    <div id="placebar" hidden></div>
+  </div>
 
   <footer id="bar">
     <nav id="nav">
-      <button type="button" data-act="open" data-sheet="build" title="建造"><i>🔨</i><span>建造</span></button>
-      <button type="button" data-act="open" data-sheet="menu" title="菜单"><i>📖</i><span>菜单</span></button>
-      <button type="button" data-act="open" data-sheet="stock" title="采购与仓储"><i>📦</i><span>采购</span></button>
-      <button type="button" data-act="open" data-sheet="staff" title="员工与工作优先级"><i>👥</i><span>员工</span></button>
-      <button type="button" data-act="open" data-sheet="ledger" title="账本"><i>📒</i><span>账本</span></button>
+      <button type="button" data-act="open" data-sheet="menu"><i>📖</i><span>菜单</span></button>
+      <button type="button" data-act="open" data-sheet="staff"><i>👥</i><span>员工</span></button>
+      <button type="button" data-act="open" data-sheet="ledger"><i>📒</i><span>账本</span></button>
+      <button type="button" data-act="open" data-sheet="build"><i>🔨</i><span>建造</span></button>
+      <button type="button" data-act="open" data-sheet="stock"><i>📦</i><span>仓库</span></button>
     </nav>
-    <div id="rail" aria-label="各工位排队"></div>
-    <div id="clock">
-      <div id="date"><i id="d-ev"></i><b id="d-week"></b><span id="d-day"></span><span id="d-time" class="num"></span><i id="d-phase" class="chip"></i></div>
+    <div id="cell6">
+      <div id="rail" aria-label="各工位排队"></div>
       <div id="speed" role="group" aria-label="时间流速">
-        <button type="button" data-act="speed" data-v="0" title="暂停（空格）">⏸</button>
-        <button type="button" data-act="speed" data-v="1" title="1×">▶</button>
-        <button type="button" data-act="speed" data-v="2" title="2×">▶▶</button>
-        <button type="button" data-act="speed" data-v="4" title="4×">▶▶▶</button>
-        <button type="button" data-act="speed" data-v="8" title="8×">⏩</button>
+        <button type="button" data-act="speed" data-v="1">1×</button>
+        <button type="button" data-act="speed" data-v="2">2×</button>
+        <button type="button" data-act="speed" data-v="4">4×</button>
+        <button type="button" data-act="speed" data-v="8">8×</button>
       </div>
     </div>
+    <button type="button" id="play" data-act="playToggle" title="开始 / 暂停（空格）">▶</button>
   </footer>
 
   <div id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>

@@ -83,12 +83,12 @@
     if (S.bought) {
       set('#b-fill', '100%', 'width');
       set('#b-text', '已买下');
-      set('#buyout', 'hudbox', 'class');
+      set('#buyout', '', 'class');
     } else {
       set('#b-fill', Math.min(100, (S.cash / C.BUYOUT) * 100).toFixed(1) + '%', 'width');
       const est = sim.estimateWeeks(S);
       set('#b-text', Math.floor((S.cash / C.BUYOUT) * 100) + '%' + (est == null || est === Infinity || S.cash >= C.BUYOUT ? '' : ' · ' + est + ' 周'));
-      set('#buyout', 'hudbox' + (S.cash >= C.BUYOUT ? ' ready' : ''), 'class');
+      set('#buyout', S.cash >= C.BUYOUT ? 'ready' : '', 'class');
     }
     const al = sim.rentAlert(S);
     if (al) {
@@ -112,8 +112,32 @@
       ['💰', p.pay, '等结账'],
     ];
     set('#rail', cells.map((c) => (c ? '<span class="st' + (c[1] >= 4 ? ' h' : c[1] >= 2 ? ' w' : '') + '" title="' + c[2] + '">' + c[0] + '<b>' + c[1] + '</b></span>' : '<span class="sep"></span>')).join(''), 'html');
-    set('#goal', goals(S).map((g) => '<span>🎯 ' + esc(g) + '</span>').join(''), 'html');
-    for (const b of document.querySelectorAll('#speed button')) b.classList.toggle('on', Number(b.dataset.v) === UI.speed);
+    set('#goal', goals(S).map((g) => '<li>' + esc(g) + '</li>').join(''), 'html');
+    set('#goalbox', 'box' + (UI.flags.goalsOpen ? ' open' : ''), 'class');
+    for (const b of document.querySelectorAll('#speed button')) b.classList.toggle('on', Number(b.dataset.v) === (UI.speed || UI.lastSpeed));
+    set('#play', UI.speed ? '⏸' : '▶');
+    set('#play', UI.speed ? 'run' : '', 'class');
+    // 表盘：时针、分针，以及午市 / 晚市两段弧
+    const mm = S.minute;
+    const hands = (mm / 720) * 360 + '|' + (mm % 60) * 6;
+    if (cache.hands !== hands) {
+      cache.hands = hands;
+      $('#hand-h').setAttribute('transform', 'rotate(' + (mm / 720) * 360 + ' 50 50)');
+      $('#hand-m').setAttribute('transform', 'rotate(' + (mm % 60) * 6 + ' 50 50)');
+    }
+    if (!cache.arcs) {
+      cache.arcs = 1;
+      const arc = (a, b) => {
+        const pt = (m) => {
+          const t = ((m / 720) * 360 - 90) * (Math.PI / 180);
+          return (50 + 42 * Math.cos(t)).toFixed(1) + ' ' + (50 + 42 * Math.sin(t)).toFixed(1);
+        };
+        return 'M' + pt(a) + 'A42 42 0 0 1 ' + pt(b);
+      };
+      $('#lunch-arc').setAttribute('d', arc(C.LUNCH_START, C.LUNCH_END));
+      $('#dinner-arc').setAttribute('d', arc(C.DINNER_START, C.DINNER_END));
+      $('#clockbox').title = '橙色弧线：午市 11:00–13:30、晚市 17:00–20:30';
+    }
     for (const b of document.querySelectorAll('#nav button')) b.classList.toggle('on', b.dataset.sheet === UI.sheet);
     toasts(S);
   };
@@ -126,18 +150,20 @@
     const rent = sim.rent(S);
     const y = S.days[S.days.length - 1];
     if (S.cash >= C.BUYOUT) out.push(sim.dow(S) === 6 ? '周一点 🔑 买下店铺' : '点 🔑 买下店铺！');
+    else if (S.cash >= rent) out.push('攒够 ¥24,000 买下店铺');
     else if (S.cash < rent) out.push('周日前备齐房租');
-    if (out.length < 2 && S.cash < C.BUYOUT) {
+    if (S.cash < C.BUYOUT) {
       if (!sim.stationCount(S, 'sink')) out.push('买水池，洗菜快 2.5 倍');
-      else if (y && y.walkQueue >= 4 && sim.seats(S) < 12) out.push('等位走了 ' + y.walkQueue + ' 桌：加桌椅');
-      else if (!sim.stationCount(S, 'pass')) out.push('买出餐台，摆盘更快');
-      else if (y && y.walkFood + y.walkOrder >= 2) out.push('等太久走了 ' + (y.walkFood + y.walkOrder) + ' 桌：' + (S.staff.length < 3 ? '加锅、砧板或人手' : '看哪个数字最大'));
-      else if (S.items.some((it) => it.broken)) out.push('有设备坏了，点它修');
-      else if (S.rep >= 42 && !S.research && MR.DISH_ORDER.some((id) => !S.menu[id].unlocked) && (S.flags.researched || 0) < 2) out.push('研发新菜，提高客单价');
-      else if (y && sim.env(S) < 8 && S.cash > rent * 1.5) out.push('摆点绿植灯具，提升环境');
-      else if (S.cash > MR.rentOf(sim.week(S) + 1) * 2) out.push('余钱攒着买断');
+      if (y && y.walkQueue >= 4 && sim.seats(S) < 12) out.push('等位走了 ' + y.walkQueue + ' 桌：加桌椅');
+      if (!sim.stationCount(S, 'pass')) out.push('买出餐台，摆盘更快');
+      if (y && y.walkFood + y.walkOrder >= 2) out.push('等太久走了 ' + (y.walkFood + y.walkOrder) + ' 桌：' + (S.staff.length < 3 ? '加锅、砧板或人手' : '看哪个数字最大'));
+      if (S.items.some((it) => it.broken)) out.push('有设备坏了，点它修');
+      if (S.rep >= 42 && !S.research && MR.DISH_ORDER.some((id) => !S.menu[id].unlocked) && (S.flags.researched || 0) < 2) out.push('研发新菜，提高客单价');
+      if (y && sim.env(S) < 8 && S.cash > rent * 1.5) out.push('摆点绿植灯具，提升环境');
+      if (S.cash > MR.rentOf(sim.week(S) + 1) * 2) out.push('余钱攒着买断');
     }
-    return out.slice(0, 2);
+    if (!out.length) out.push('稳住出品，把余钱攒起来');
+    return out.slice(0, 3);
   }
 
   function toasts(S) {
@@ -159,7 +185,7 @@
   };
 
   // ================= 浮窗面板 =================
-  const TITLES = { build: '建造', menu: '菜单', stock: '采购', staff: '员工', ledger: '账本', emergency: '应急' };
+  const TITLES = { build: '建造', menu: '菜单', stock: '仓库', staff: '员工', ledger: '账本', emergency: '应急' };
   UI.open = function (name, tab) {
     if (UI.place) UI.cancelPlace();
     hidePop();
@@ -587,14 +613,14 @@
 
   // ================= 引导（第一天） =================
   const TUT = [
-    { text: '左上角是命脉：💰 现金、🏠 本周房租（周日 22:00 扣，不够就倒闭）、🧾 扣租后结余。🧾 变红就危险。', hl: '#tl', btn: '知道了' },
+    { text: '左下角是命脉：💰 现金、🏠 本周房租（周日 22:00 扣，不够就倒闭）、🧾 扣租后结余。🧾 变红就危险。', hl: '#tl', btn: '知道了' },
     { text: '先进货：点 📦 →「🛒 补货」。', hl: '#nav [data-sheet="stock"]', until: (S) => S.deliveries.length > 0 || MR.ING_ORDER.some((k) => sim.stockQty(S, k) > 0) },
     { text: '点 👥 看工作表：数字越小越先做，✕ 是不做。点格子就能改。', hl: '#nav [data-sheet="staff"]', until: () => UI.sheet === 'staff' || UI.flags.viewedStaff, skip: '跳过' },
-    { text: '试一次摆放：🔨 → 等待椅（¥120）→ 点堂食地面。绿色可放，红色不行。', hl: '#nav [data-sheet="build"]', until: (S) => (S.flags.placed || 0) > 0, skip: '不买，跳过' },
-    { text: '开门：点右下角 ▶（或按空格）。11:00 午市开始。', hl: '#speed', until: () => UI.speed > 0 },
+    { text: '试一次摆放：🔨 建造 → 等待椅（¥120）→ 点堂食地面。绿色可放，红色不行。', hl: '#nav [data-sheet="build"]', until: (S) => (S.flags.placed || 0) > 0, skip: '不买，跳过' },
+    { text: '开门：点右下角橙色 ▶（或按空格）。11:00 午市开始。', hl: '#play', until: () => UI.speed > 0 },
     { when: (S) => S.flags.ordered, text: '第一单来了。底栏这排数字是各工位排着几单，哪个大，瓶颈就在哪。', hl: '#rail', btn: '知道了' },
     { when: (S) => S.flags.rated, text: '菜上桌了，飘出来的是综合分。📒 →「评价」能看五项细分。', hl: '#nav [data-sheet="ledger"]', until: () => UI.flags.viewedRatings, skip: '以后再看', enter: () => (UI.tab.ledger = 'rate') },
-    { when: (S) => S.day >= 2, text: '日结不扣租，真正的坎是周日 22:00。之后跟着右上角 🎯 走。', btn: '开始经营' },
+    { when: (S) => S.day >= 2, text: '日结不扣租，真正的坎是周日 22:00。之后看左边的目标，点 ▼ 展开。', btn: '开始经营' },
   ];
   UI.coach = function () {
     const S = UI.S;
@@ -792,6 +818,12 @@
       const i = order.indexOf(s.prio[d.job]);
       sim.setPrio(UI.S, s.id, d.job, order[(i + (d.dir === '-1' ? 4 : 1)) % 5]);
       UI.flags.viewedStaff = true;
+    },
+    playToggle() {
+      UI.setSpeed(UI.speed ? 0 : UI.lastSpeed);
+    },
+    goalToggle() {
+      UI.flags.goalsOpen = !UI.flags.goalsOpen;
     },
     rotateOk() {
       UI.flags.rotateOk = true;
