@@ -301,7 +301,7 @@
     for (const c of cells) g[idx(c.x, c.y)] = -1;
     const map = bfs(S, C.DOOR.x, C.DOOR.y, g);
     const reach = (px, py) => inb(px, py) && map.dist[idx(px, py)] >= 0;
-    if (!reach(4, 3) && !reach(5, 3)) return { ok: false, why: '会把后厨的门堵死' };
+    if (!C.KITCHEN_DOORS.some((d) => reach(d.x, d.y - 1))) return { ok: false, why: '会把后厨的门堵死' };
     const check = (cs, isTable) => {
       let anyStand = false;
       for (const c of cs) {
@@ -851,11 +851,11 @@
       S.menu[id] = { unlocked: !!d.start, on: !!d.start, price: d.ref, sold: 0, sum: 0, n: 0 };
     }
     regrid(S);
-    addItem(S, 'shelf', 2, 0, 0);
-    addItem(S, 'board', 4, 0, 0);
-    addItem(S, 'wok', 6, 0, 0);
-    addItem(S, 'table2', 0, 7, 0);
-    addItem(S, 'table2', 5, 7, 0);
+    addItem(S, 'shelf', 3, 0, 0);
+    addItem(S, 'board', 5, 0, 0);
+    addItem(S, 'wok', 7, 0, 0);
+    addItem(S, 'table2', 1, 7, 0);
+    addItem(S, 'table2', 7, 7, 0);
     for (const it of S.items) it.paid = MR.ITEMS[it.type].price;
 
     const owner = makeStaff(S, 'waiter', { name: '店主', fixed: true, trait: null });
@@ -864,13 +864,13 @@
     owner.wage = 0;
     owner.skills = { knife: 34, fire: 32, season: 36, plate: 38, drink: 42, serve: 55, cash: 55, clean: 50, repair: 42, research: 46 };
     owner.prio = { order: 1, serve: 1, cash: 1, drink: 2, clean: 2, wash: 3, plate: 4, cut: 0, cook: 0, repair: 2, research: 2 };
-    owner.x = 3;
+    owner.x = 4;
     owner.y = 8;
     owner.color = 0;
     const chef = makeStaff(S, 'chef', { name: '老周', fixed: true, trait: 'steady' });
     chef.skills = { knife: 48, fire: 50, season: 50, plate: 42, drink: 24, serve: 20, cash: 18, clean: 30, repair: 30, research: 40 };
     chef.wage = 84;
-    chef.x = 5;
+    chef.x = 6;
     chef.y = 2;
     chef.color = 1;
     S.staff.push(owner, chef);

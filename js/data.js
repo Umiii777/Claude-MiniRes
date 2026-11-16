@@ -5,8 +5,8 @@
   const MR = (root.MR = root.MR || {});
 
   MR.C = {
-    COLS: 12,
-    ROWS: 13,
+    COLS: 20,
+    ROWS: 12,
     START_CASH: 3000,
     BUYOUT: 24000,
     RENT_BASE: 800,
@@ -24,30 +24,30 @@
     GUEST_SPEED: 2.3,
     MAX_STAFF: 5, // 不含店主
     MAX_QUEUE: 4,
-    DOOR: { x: 3, y: 11 },
-    STREET_Y: 12,
+    DOOR: { x: 4, y: 10 },
+    STREET_Y: 11,
     KITCHEN_DOORS: [
-      { x: 4, y: 4 },
       { x: 5, y: 4 },
+      { x: 6, y: 4 },
     ],
     // 门口两侧不许摆东西（挡门）
     KEEP_CLEAR: [
-      { x: 4, y: 3 },
       { x: 5, y: 3 },
-      { x: 4, y: 5 },
+      { x: 6, y: 3 },
       { x: 5, y: 5 },
-      { x: 3, y: 10 },
+      { x: 6, y: 5 },
+      { x: 4, y: 9 },
     ],
     WEEKDAYS: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
   };
 
   // 承租范围。kind 决定能摆哪类物品；price 为一次性空间解锁费。
   MR.ZONES = [
-    { id: 'kitchen', name: '后厨', kind: 'kitchen', x0: 2, y0: 0, x1: 8, y1: 3, price: 0 },
-    { id: 'dining', name: '堂食', kind: 'dining', x0: 0, y0: 5, x1: 7, y1: 10, price: 0 },
-    { id: 'storage', name: '储藏间', kind: 'kitchen', x0: 0, y0: 0, x1: 1, y1: 3, price: 1200 },
-    { id: 'yard', name: '后院座位', kind: 'dining', x0: 8, y0: 5, x1: 11, y1: 10, price: 2000 },
-    { id: 'kitchen2', name: '扩大后厨', kind: 'kitchen', x0: 9, y0: 0, x1: 11, y1: 3, price: 2500 },
+    { id: 'kitchen', name: '后厨', kind: 'kitchen', x0: 3, y0: 0, x1: 10, y1: 3, price: 0 },
+    { id: 'dining', name: '堂食', kind: 'dining', x0: 0, y0: 5, x1: 11, y1: 9, price: 0 },
+    { id: 'storage', name: '储藏间', kind: 'kitchen', x0: 0, y0: 0, x1: 2, y1: 3, price: 1200 },
+    { id: 'yard', name: '后院座位', kind: 'dining', x0: 12, y0: 5, x1: 19, y1: 9, price: 2000 },
+    { id: 'kitchen2', name: '扩大后厨', kind: 'kitchen', x0: 11, y0: 0, x1: 19, y1: 3, price: 2500 },
   ];
 
   MR.INGREDIENTS = {
@@ -210,6 +210,8 @@
     staff: ['老周', '阿芳', '小满', '大刘', '春梅', '阿杰', '秀兰', '小虎', '老郑', '玉珍', '阿斌', '小雪', '建国', '阿香', '小北', '德顺'],
     regular: ['陈伯', '王姐', '小林', '老马', '眼镜张', '邱老师', '阿May', '胖哥', '孙阿姨', '夜班李', '画画的小周', '遛狗的赵叔'],
   };
+
+  MR.ICON = { wash: '💧', cut: '🔪', cook: '🍳', plate: '🍽️', serve: '🛎️', order: '📝', cash: '💰', drink: '🍵', clean: '🧹', repair: '🔧', research: '🧪', rest: '💤', veg: '🥬', egg: '🥚', rice: '🍚', meat: '🥩', fish: '🐟', tea: '🍋' };
 
   MR.ACH = [
     { id: 'rent1', name: '活过第一个周日', desc: '第一次交上房租' },

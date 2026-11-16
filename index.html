@@ -3,78 +3,75 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#1f7a62">
+<meta name="theme-color" content="#16221f">
 <title>一间小馆</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
-  <div id="game">
-    <header id="hud">
-      <div class="hud-top">
-        <div id="date"><b id="d-week">第 1 周</b><span id="d-day">周一</span><span id="d-time" class="num">10:30</span><i id="d-phase" class="chip">备菜</i><i id="d-ev" class="chip ev" hidden></i></div>
-        <div id="speed" role="group" aria-label="时间流速">
-          <button type="button" data-act="speed" data-v="0" aria-label="暂停">暂停</button>
-          <button type="button" data-act="speed" data-v="1">1×</button>
-          <button type="button" data-act="speed" data-v="2">2×</button>
-          <button type="button" data-act="speed" data-v="4">4×</button>
-          <button type="button" data-act="speed" data-v="8">8×</button>
-        </div>
-      </div>
-      <div id="stats">
-        <div class="stat"><span class="k">现金</span><b id="s-cash" class="num">¥0</b></div>
-        <div class="stat" id="st-rent"><span class="k">本周房租</span><b id="s-rent" class="num">¥0</b><small id="s-left"></small></div>
-        <div class="stat" id="st-after"><span class="k">扣租后结余</span><b id="s-after" class="num">¥0</b></div>
-        <div class="stat"><span class="k">口碑</span><b id="s-rep" class="num">0</b><small id="s-seats"></small></div>
-      </div>
-      <button type="button" id="buyout" data-act="buyoutOpen">
-        <span class="bo-k">买断进度</span>
-        <span class="bar"><i id="b-fill"></i></span>
-        <span id="b-text" class="num"></span>
-      </button>
-    </header>
+  <main id="stage"><canvas id="cv"></canvas></main>
+
+  <section id="tl" class="hudbox" aria-label="资金">
+    <div class="res" title="现金"><i>💰</i><b id="s-cash" class="num">¥0</b></div>
+    <div class="res" id="st-rent" title="本周房租，周日 22:00 自动扣"><i>🏠</i><b id="s-rent" class="num">¥0</b><small id="s-left"></small></div>
+    <div class="res" id="st-after" title="扣租后结余：现金减去本周房租"><i>🧾</i><b id="s-after" class="num">¥0</b></div>
+    <div class="res" title="口碑：决定明天来多少客人"><i>⭐</i><b id="s-rep" class="num">0</b><small id="s-seats"></small></div>
+  </section>
+
+  <section id="trc">
+    <button type="button" id="buyout" class="hudbox" data-act="buyoutOpen" title="买断进度：攒够 ¥24,000 向房东买下店铺">
+      <i>🔑</i><span class="bar"><i id="b-fill"></i></span><span id="b-text" class="num"></span>
+    </button>
     <div id="alert" hidden></div>
-    <div id="coach" hidden></div>
-    <main id="stage">
-      <canvas id="cv"></canvas>
-      <div id="toasts" aria-live="polite"></div>
-      <div id="pop" hidden></div>
-    </main>
-    <div id="rail" aria-label="各工位排队"></div>
     <div id="goal"></div>
-    <div id="placebar" hidden></div>
-    <nav id="nav">
-      <button type="button" data-act="open" data-sheet="build"><i>建</i><span>建造</span></button>
-      <button type="button" data-act="open" data-sheet="menu"><i>菜</i><span>菜单</span></button>
-      <button type="button" data-act="open" data-sheet="stock"><i>货</i><span>采购</span></button>
-      <button type="button" data-act="open" data-sheet="staff"><i>人</i><span>员工</span></button>
-      <button type="button" data-act="open" data-sheet="ledger"><i>账</i><span>账本</span></button>
-    </nav>
-  </div>
-  <aside id="sheet" hidden>
-    <header><h2 id="sh-title"></h2><button type="button" class="x" data-act="close" aria-label="关闭">关闭</button></header>
-    <div id="sh-tabs"></div>
+    <div id="coach" hidden></div>
+  </section>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="pop" class="hudbox" hidden></div>
+  <aside id="sheet" class="hudbox" hidden>
+    <header><h2 id="sh-title"></h2><div id="sh-tabs"></div><button type="button" class="x" data-act="close" aria-label="关闭">✕</button></header>
     <div id="sh-body"></div>
   </aside>
+  <div id="placebar" hidden></div>
+
+  <footer id="bar">
+    <nav id="nav">
+      <button type="button" data-act="open" data-sheet="build" title="建造"><i>🔨</i><span>建造</span></button>
+      <button type="button" data-act="open" data-sheet="menu" title="菜单"><i>📖</i><span>菜单</span></button>
+      <button type="button" data-act="open" data-sheet="stock" title="采购与仓储"><i>📦</i><span>采购</span></button>
+      <button type="button" data-act="open" data-sheet="staff" title="员工与工作优先级"><i>👥</i><span>员工</span></button>
+      <button type="button" data-act="open" data-sheet="ledger" title="账本"><i>📒</i><span>账本</span></button>
+    </nav>
+    <div id="rail" aria-label="各工位排队"></div>
+    <div id="clock">
+      <div id="date"><i id="d-ev"></i><b id="d-week"></b><span id="d-day"></span><span id="d-time" class="num"></span><i id="d-phase" class="chip"></i></div>
+      <div id="speed" role="group" aria-label="时间流速">
+        <button type="button" data-act="speed" data-v="0" title="暂停（空格）">⏸</button>
+        <button type="button" data-act="speed" data-v="1" title="1×">▶</button>
+        <button type="button" data-act="speed" data-v="2" title="2×">▶▶</button>
+        <button type="button" data-act="speed" data-v="4" title="4×">▶▶▶</button>
+        <button type="button" data-act="speed" data-v="8" title="8×">⏩</button>
+      </div>
+    </div>
+  </footer>
+
   <div id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>
+  <div id="rotate" hidden><div><p>📱↻</p><p>请横屏，或用电脑打开</p><button type="button" class="btn" data-act="rotateOk">仍然继续</button></div></div>
   <div id="title">
     <div class="sign">
-      <p class="eyebrow">经营 · 建造 · 交租求生</p>
       <h1>一间小馆</h1>
-      <p class="lede">一间租来的小餐厅。把后厨流水线、员工和每周房租同时扛住，直到把铺子买到自己名下。</p>
+      <p class="lede">租来的小餐厅。扛住每周房租，把铺子买下来。</p>
       <ul class="rules">
-        <li><b>周日 22:00</b> 自动扣租。现金不够，当场倒闭。</li>
-        <li>房租从 <b>¥800</b> 起，每周涨 <b>¥120</b>，规则一开始就告诉你。</li>
-        <li>攒够 <b>¥24,000</b> 向房东买下店铺，从此不再交租。</li>
+        <li><i>🏠</i><span>周日 <b>22:00</b> 扣租，不够就倒闭</span></li>
+        <li><i>📈</i><span><b>¥800</b> 起，每周 <b>+¥120</b></span></li>
+        <li><i>🔑</i><span>攒够 <b>¥24,000</b> 买下店铺</span></li>
       </ul>
-      <div class="opt">
-        <span class="k">事件节奏</span>
-        <div class="seg" id="story">
-          <button type="button" data-act="story" data-v="calm" class="on">平静<small>事件少，适合学规则</small></button>
-          <button type="button" data-act="story" data-v="tense">紧张<small>交租周更容易添乱</small></button>
-        </div>
+      <div class="seg" id="story">
+        <button type="button" data-act="story" data-v="calm" class="on">🌤 平静<small>事件少</small></button>
+        <button type="button" data-act="story" data-v="tense">⛈ 紧张<small>交租周添乱</small></button>
       </div>
-      <label class="check"><input type="checkbox" id="skip-tut"> 跳过第一天的引导</label>
+      <label class="check"><input type="checkbox" id="skip-tut"> 跳过引导</label>
       <div class="go">
         <button type="button" class="btn primary big" data-act="newGame">开张</button>
         <button type="button" class="btn big" data-act="continue" id="btn-continue" hidden>继续上次的店</button>

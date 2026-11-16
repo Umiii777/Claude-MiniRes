@@ -858,6 +858,7 @@
     }
     if (why !== 'nodish') S.wk.walk = (S.wk.walk || 0) + 1;
     const m = g.m[0];
+    g.sat = 0;
     fx(S, { k: 'angry', x: m.x, y: m.y });
     cancelTickets(S, g);
     // 已经上桌的菜照价付八折
@@ -901,6 +902,7 @@
     const env = sim.env(S);
     let sat = food - 24 * Math.max(0, (g.waitFrac - 0.5) / 0.5) + Math.min(9, env * 0.3) * (tp.focus === 'env' ? 1.8 : 1) - Math.min(14, S.spots.length) - clamp((ratio - 1) * 45, -8, 18) + g.chat + (factor < 1 ? -12 : 0);
     sat = clamp(sat, 0, 100);
+    g.sat = sat;
     const tipRate = sat >= 90 ? 0.2 : sat >= 75 ? 0.08 : 0;
     const tip = bill * factor * tipRate * tp.tip;
     const pay = Math.round(bill * factor + tip);
@@ -1069,7 +1071,7 @@
   function spawnVisitor(S, vtype) {
     const side = rnd(S) < 0.5 ? 0 : C.COLS - 1;
     const g = { id: S.nextId++, kind: 'visitor', vtype, type: 'passerby', size: 1, state: 'vin', t: 0, pat: 1, patMax: 1, table: 0, m: [{ x: side, y: C.STREET_Y, path: [], delay: 0, dir: 1 }], orders: 0, served: 0, dishes: [], claimed: 0, side, label: vtype === 'inspector' ? '卫生检查员' : '房东' };
-    const target = vtype === 'inspector' ? nearWalkable(S, 5, 2) : nearWalkable(S, 3, 8);
+    const target = vtype === 'inspector' ? nearWalkable(S, 6, 2) : nearWalkable(S, 4, 7);
     go(S, g.m[0], target.x, target.y);
     S.groups.push(g);
   }

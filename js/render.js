@@ -36,7 +36,7 @@
   const GUEST_HUES = ['#7d8fa3', '#9c8468', '#6f9a86', '#a37b8f', '#8a8fb8', '#b08a5c'];
   const TIER_COL = { god: '#b5179e', great: '#1f8a5b', good: '#2f7fb5', ok: '#7b8794', bad: '#d2463a' };
   R.TIER_COL = TIER_COL;
-  const FONT = '"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Noto Sans SC","WenQuanYi Zen Hei",sans-serif';
+  const FONT = '"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Noto Sans SC","WenQuanYi Zen Hei","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
   let cv, ctx, T = 32, dpr = 1;
   const parts = []; // 飘字、烟等
@@ -81,9 +81,10 @@
     ctx.fillText(s, x, y);
   }
   function badge(s, cx, cy, size, bg, fg) {
-    size = Math.max(size, 10);
-    const w = size * (s.length > 1 ? 0.62 * s.length + 0.5 : 1.25);
-    fillRR(cx - w / 2, cy - size * 0.62, w, size * 1.24, size * 0.35, bg);
+    size = Math.max(size, 11);
+    ctx.font = '700 ' + Math.round(size * 0.82) + 'px ' + FONT;
+    const w = Math.max(size * 1.25, ctx.measureText(s).width + size * 0.5);
+    fillRR(cx - w / 2, cy - size * 0.62, w, size * 1.24, size * 0.4, bg);
     text(s, cx, cy + size * 0.04, size * 0.82, fg, 'center', 700);
   }
 
@@ -431,77 +432,179 @@
   }
 
   // ---------- 人 ----------
-  function person(x, y, body, opt) {
-    const cx = (x + 0.5) * T,
-      cy = (y + 0.5) * T;
-    const s = opt.scale || 1;
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + T * 0.3 * s, T * 0.24 * s, T * 0.09 * s, 0, 0, 6.2832);
-    ctx.fill();
-    const bob = opt.walk ? Math.sin(clock * 14 + x * 3 + y) * T * 0.03 : 0;
-    fillRR(cx - T * 0.2 * s, cy - T * 0.08 * s + bob, T * 0.4 * s, T * 0.38 * s, T * 0.14 * s, body);
-    if (opt.apron) fillRR(cx - T * 0.13 * s, cy + T * 0.0 * s + bob, T * 0.26 * s, T * 0.28 * s, T * 0.06 * s, '#f7f9f8');
-    circle(cx, cy - T * 0.2 * s + bob, T * 0.16 * s, opt.skin || PAL.skin);
-    if (opt.hat === 'chef') {
-      fillRR(cx - T * 0.15 * s, cy - T * 0.46 * s + bob, T * 0.3 * s, T * 0.2 * s, T * 0.08 * s, '#ffffff');
-      ctx.fillStyle = '#dfe5e7';
-      ctx.fillRect(cx - T * 0.15 * s, cy - T * 0.3 * s + bob, T * 0.3 * s, T * 0.04 * s);
-    } else if (opt.hat === 'band') {
-      ctx.fillStyle = '#c5382c';
-      ctx.fillRect(cx - T * 0.16 * s, cy - T * 0.3 * s + bob, T * 0.32 * s, T * 0.07 * s);
-    } else if (opt.hat === 'cap') {
-      fillRR(cx - T * 0.16 * s, cy - T * 0.38 * s + bob, T * 0.32 * s, T * 0.14 * s, T * 0.06 * s, opt.hatColor || '#23323a');
-    } else {
-      ctx.fillStyle = opt.hair || '#3a2a20';
+  // 表情：happy / ok / meh / sad / angry / tired / eat
+  function staffFace(s) {
+    const m = sim.mood(s);
+    if (m < 20) return 'angry';
+    if (s.energy < 25) return 'tired';
+    return m >= 70 ? 'happy' : m >= 50 ? 'ok' : m >= 35 ? 'meh' : 'sad';
+  }
+  R.staffFace = staffFace;
+  function guestFace(g) {
+    if (g.kind === 'visitor') return 'meh';
+    if (g.state === 'eating') return 'eat';
+    if (g.state === 'leaving' || g.state === 'toCounter') return g.sat == null ? 'ok' : g.sat >= 75 ? 'happy' : g.sat >= 55 ? 'ok' : g.sat >= 40 ? 'meh' : g.sat > 0 ? 'sad' : 'angry';
+    if (g.state === 'queue' || g.state === 'wantOrder' || g.state === 'waitFood' || g.state === 'wantPay') {
+      const f = g.pat / g.patMax;
+      return f > 0.6 ? 'ok' : f > 0.35 ? 'meh' : f > 0.15 ? 'sad' : 'angry';
+    }
+    return 'ok';
+  }
+  function drawFace(cx, cy, r, mood, seed) {
+    const ex = r * 0.42,
+      ey = cy + r * 0.05,
+      my = cy + r * 0.5;
+    const lw = Math.max(1, r * 0.13);
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#2a211c';
+    ctx.fillStyle = '#2a211c';
+    if (mood === 'angry') circle(cx, cy + r * 0.1, r * 0.98, 'rgba(225,70,50,0.28)');
+    if (mood === 'happy' || mood === 'eat') {
+      circle(cx - ex * 1.35, my - r * 0.12, r * 0.17, 'rgba(240,110,100,0.5)');
+      circle(cx + ex * 1.35, my - r * 0.12, r * 0.17, 'rgba(240,110,100,0.5)');
+    }
+    ctx.fillStyle = '#2a211c';
+    const blink = (clock * 0.6 + seed * 0.37) % 3 < 0.09;
+    for (const sx of [-1, 1]) {
+      const x = cx + sx * ex;
       ctx.beginPath();
-      ctx.arc(cx, cy - T * 0.22 * s + bob, T * 0.165 * s, Math.PI, 0);
+      if (mood === 'happy' || mood === 'eat') {
+        ctx.arc(x, ey + r * 0.08, r * 0.17, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+      } else if (mood === 'tired' || blink) {
+        ctx.moveTo(x - r * 0.16, ey);
+        ctx.lineTo(x + r * 0.16, ey);
+        ctx.stroke();
+      } else {
+        ctx.arc(x, ey, r * 0.1, 0, 6.2832);
+        ctx.fill();
+      }
+      if (mood === 'sad' || mood === 'angry') {
+        const k = mood === 'angry' ? 1 : -1; // 怒：眉头向内压；丧：眉尾下垂
+        ctx.beginPath();
+        ctx.moveTo(x - sx * r * 0.22, ey - r * (k > 0 ? 0.2 : 0.36));
+        ctx.lineTo(x + sx * r * 0.22, ey - r * (k > 0 ? 0.4 : 0.22));
+        ctx.stroke();
+      }
+    }
+    ctx.beginPath();
+    if (mood === 'happy') ctx.arc(cx, my - r * 0.16, r * 0.26, 0.15 * Math.PI, 0.85 * Math.PI);
+    else if (mood === 'ok') ctx.arc(cx, my - r * 0.2, r * 0.2, 0.25 * Math.PI, 0.75 * Math.PI);
+    else if (mood === 'meh') {
+      ctx.moveTo(cx - r * 0.16, my);
+      ctx.lineTo(cx + r * 0.16, my);
+    } else if (mood === 'sad' || mood === 'angry') ctx.arc(cx, my + r * 0.2, r * 0.22, 1.2 * Math.PI, 1.8 * Math.PI);
+    else if (mood === 'tired') ctx.ellipse(cx, my, r * 0.1, r * 0.13, 0, 0, 6.2832);
+    else if (mood === 'eat') ctx.ellipse(cx, my - r * 0.02, r * 0.13, r * (0.07 + 0.07 * Math.abs(Math.sin(clock * 7 + seed))), 0, 0, 6.2832);
+    if (mood === 'tired' || mood === 'eat') ctx.fill();
+    else ctx.stroke();
+    if (mood === 'tired' || mood === 'sad') {
+      // 汗滴
+      ctx.fillStyle = '#7cc6ee';
+      ctx.beginPath();
+      const dx = cx + r * 0.95,
+        dy = cy - r * 0.35 + ((clock * 0.8 + seed) % 1) * r * 0.3;
+      ctx.moveTo(dx, dy - r * 0.2);
+      ctx.quadraticCurveTo(dx + r * 0.16, dy + r * 0.08, dx, dy + r * 0.12);
+      ctx.quadraticCurveTo(dx - r * 0.16, dy + r * 0.08, dx, dy - r * 0.2);
       ctx.fill();
     }
-    return { cx, cy: cy + bob };
+  }
+  const HAIR = ['#2a2320', '#4a3626', '#1c1c1c', '#6b4a2a', '#7a7a7a', '#3b2a4a'];
+  // 大头小身子的小人。返回头顶坐标，给头顶气泡用。
+  function person(x, y, opt) {
+    const cx = (x + 0.5) * T,
+      by = (y + 0.5) * T;
+    const s = (opt.scale || 1) * T;
+    const seed = opt.seed || 0;
+    const bob = opt.walk ? Math.abs(Math.sin(clock * 11 + seed)) * s * 0.05 : 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(cx, by + s * 0.4, s * 0.26, s * 0.08, 0, 0, 6.2832);
+    ctx.fill();
+    // 脚
+    const step = opt.walk ? Math.sin(clock * 11 + seed) * s * 0.06 : 0;
+    fillRR(cx - s * 0.15, by + s * 0.3 + step, s * 0.12, s * 0.1, s * 0.04, '#3a3230');
+    fillRR(cx + s * 0.03, by + s * 0.3 - step, s * 0.12, s * 0.1, s * 0.04, '#3a3230');
+    // 身体
+    fillRR(cx - s * 0.2, by + s * 0.02 - bob, s * 0.4, s * 0.32, s * 0.13, opt.body);
+    if (opt.apron) {
+      fillRR(cx - s * 0.13, by + s * 0.1 - bob, s * 0.26, s * 0.24, s * 0.05, '#f7f9f8');
+      ctx.fillStyle = opt.body;
+      ctx.fillRect(cx - s * 0.05, by + s * 0.2 - bob, s * 0.1, s * 0.06);
+    }
+    // 头
+    const hy = by - s * 0.14 - bob,
+      hr = s * 0.25;
+    circle(cx, hy, hr, opt.skin || PAL.skin);
+    const hair = opt.hair || HAIR[seed % HAIR.length];
+    ctx.fillStyle = hair;
+    const style = opt.hat ? 0 : seed % 3;
+    ctx.beginPath();
+    ctx.arc(cx, hy - hr * 0.08, hr * 1.02, Math.PI * 1.02, Math.PI * 1.98);
+    ctx.quadraticCurveTo(cx, hy - hr * (style === 1 ? 0.2 : 0.55), cx - hr * 1.02, hy - hr * 0.14);
+    ctx.fill();
+    if (style === 2) {
+      circle(cx - hr * 0.95, hy + hr * 0.25, hr * 0.3, hair);
+      circle(cx + hr * 0.95, hy + hr * 0.25, hr * 0.3, hair);
+    }
+    if (opt.hat === 'chef') {
+      fillRR(cx - hr * 0.8, hy - hr * 1.75, hr * 1.6, hr * 0.95, hr * 0.4, '#ffffff');
+      fillRR(cx - hr * 0.72, hy - hr * 1.02, hr * 1.44, hr * 0.3, 2, '#e3e8ea');
+    } else if (opt.hat === 'band') {
+      fillRR(cx - hr * 1.0, hy - hr * 0.72, hr * 2.0, hr * 0.3, 2, '#c5382c');
+      circle(cx + hr * 0.95, hy - hr * 0.5, hr * 0.2, '#c5382c');
+    } else if (opt.hat === 'cap') {
+      fillRR(cx - hr * 1.0, hy - hr * 1.15, hr * 2.0, hr * 0.62, hr * 0.3, opt.hatColor || '#23323a');
+      fillRR(cx - hr * 0.3, hy - hr * 0.68, hr * 1.5, hr * 0.2, 2, opt.hatColor || '#23323a');
+    }
+    drawFace(cx, hy, hr, opt.face || 'ok', seed);
+    return { cx, cy: by - bob, top: hy - hr * (opt.hat === 'chef' ? 1.9 : 1.25) };
+  }
+  function staffLook(s) {
+    const kitchen = s.arch === 'chef' || s.arch === 'helper';
+    return { body: APRON[s.color % APRON.length], apron: true, hat: s.owner ? 'band' : kitchen ? 'chef' : null, seed: s.id, face: staffFace(s) };
   }
   function drawStaff(S, s, sel) {
     if (s.off) return;
     const t = s.task;
-    const walking = t && !t.work && s.path.length > 0;
-    const kitchen = s.arch === 'chef' || s.arch === 'helper';
-    const p = person(s.x, s.y, APRON[s.color % APRON.length], { walk: walking, apron: true, hat: s.owner ? 'band' : kitchen ? 'chef' : null, hair: s.arch === 'apprentice' ? '#6b4a2a' : '#2a2320' });
+    const look = staffLook(s);
+    look.walk = t && !t.work && s.path.length > 0;
     if (sel) {
       ctx.strokeStyle = '#ffd24a';
       ctx.lineWidth = Math.max(2, T * 0.07);
       ctx.beginPath();
-      ctx.ellipse(p.cx, p.cy + T * 0.3, T * 0.32, T * 0.14, 0, 0, 6.2832);
+      ctx.ellipse((s.x + 0.5) * T, (s.y + 0.9) * T, T * 0.36, T * 0.14, 0, 0, 6.2832);
       ctx.stroke();
     }
+    const p = person(s.x, s.y, look);
     if (s.carry) {
-      circle(p.cx + s.dir * T * 0.26, p.cy + T * 0.02, T * 0.13, '#ffffff');
-      circle(p.cx + s.dir * T * 0.26, p.cy + T * 0.02, T * 0.08, '#e08a4a');
+      circle(p.cx + s.dir * T * 0.3, p.cy + T * 0.16, T * 0.14, '#ffffff');
+      circle(p.cx + s.dir * T * 0.3, p.cy + T * 0.16, T * 0.09, '#e08a4a');
     }
-    // 心情圆点
-    const m = sim.mood(s);
-    circle(p.cx - T * 0.27, p.cy - T * 0.36, T * 0.07, m >= 60 ? PAL.good : m >= 35 ? PAL.warn : PAL.bad);
-    // 头顶：正在做什么
-    const by = p.cy - T * 0.62;
+    const by = p.top - T * 0.14;
     if (t) {
-      const icon = t.job === 'rest' ? '休' : t.job === 'cook' && t.legs[t.i].fn === 'cookStart' ? '下' : MR.JOBS[t.job] ? MR.JOBS[t.job].icon : '忙';
+      const icon = t.job === 'rest' ? MR.ICON.rest : MR.ICON[t.job] || '…';
       badge(icon, p.cx, by, T * 0.3, t.forced ? '#ffd24a' : 'rgba(255,255,255,0.95)', PAL.ink);
       if (t.work && t.dur > 0.6) {
-        const w = T * 0.5;
+        const w = T * 0.56;
         fillRR(p.cx - w / 2, by + T * 0.2, w, T * 0.07, 2, 'rgba(0,0,0,0.35)');
         fillRR(p.cx - w / 2, by + T * 0.2, w * Math.min(1, t.t / t.dur), T * 0.07, 2, '#3aa26b');
       }
-    } else if (s.energy < 25) badge('累', p.cx, by, T * 0.3, PAL.warn, '#fff');
-    text(s.owner ? '店主' : s.name, p.cx, p.cy + T * 0.52, Math.max(9, T * 0.24), 'rgba(20,32,29,0.9)', 'center', 700);
+    }
+    text(s.owner ? '店主' : s.name, p.cx, p.cy + T * 0.56, Math.max(10, T * 0.2), 'rgba(20,32,29,0.9)', 'center', 700);
   }
   function drawGroup(S, g, sel) {
     const tp = MR.GUEST_TYPES[g.type] || MR.GUEST_TYPES.passerby;
     const n = g.m.length;
     const seated = g.state !== 'queue' && g.state !== 'leaving' && g.state !== 'toCounter' && g.state !== 'vin' && g.state !== 'vstay' && !g.atCounter;
+    const face = guestFace(g);
     let top = null;
     g.m.forEach((m, i) => {
-      const off = seated ? 0 : (i - (n - 1) / 2) * 0.24;
-      let body = g.kind === 'visitor' ? (g.vtype === 'inspector' ? '#34495a' : '#6b4a8a') : g.type === 'regular' || g.type === 'critic' ? tp.color : GUEST_HUES[(g.hue + i) % GUEST_HUES.length];
-      const p = person(m.x + off, m.y, body, { walk: m.path.length > 0 && m.delay <= 0, scale: 0.88, hat: g.kind === 'visitor' ? 'cap' : null, hatColor: g.vtype === 'landlord' ? '#3a2a20' : '#23323a', hair: ['#2a2320', '#4a3626', '#6b6b6b', '#1c1c1c'][(g.id + i) % 4] });
+      const off = seated ? 0 : (i - (n - 1) / 2) * 0.3;
+      const body = g.kind === 'visitor' ? (g.vtype === 'inspector' ? '#34495a' : '#6b4a8a') : g.type === 'regular' || g.type === 'critic' ? tp.color : GUEST_HUES[(g.hue + i) % GUEST_HUES.length];
+      const p = person(m.x + off, m.y - (seated && !m.path.length ? 0.12 : 0), { body, face, seed: g.id + i * 7, walk: m.path.length > 0 && m.delay <= 0, scale: g.type === 'family' && i === n - 1 ? 0.7 : 0.9, hat: g.kind === 'visitor' ? 'cap' : null, hatColor: g.vtype === 'landlord' ? '#3a2a20' : '#23323a' });
       if (i === 0) top = p;
     });
     if (!top) return;
@@ -509,40 +612,98 @@
       ctx.strokeStyle = '#ffd24a';
       ctx.lineWidth = Math.max(2, T * 0.06);
       ctx.beginPath();
-      ctx.arc(top.cx, top.cy, T * 0.42, 0, 6.2832);
+      ctx.arc(top.cx, top.cy, T * 0.46, 0, 6.2832);
       ctx.stroke();
     }
-    const by = top.cy - T * 0.56;
+    const by = top.top - T * 0.12;
     let icon = null,
       bar = false;
-    if (g.kind === 'visitor') icon = g.vtype === 'inspector' ? '查' : '租';
+    if (g.kind === 'visitor') icon = g.vtype === 'inspector' ? '🔍' : '🏠';
     else if (g.state === 'queue') {
-      icon = '等位';
+      icon = '⏳';
       bar = true;
     } else if (g.state === 'wantOrder') {
-      icon = '点单';
+      icon = '🙋';
       bar = true;
     } else if (g.state === 'waitFood') {
-      icon = g.served + '/' + g.orders;
+      icon = '🍜' + g.served + '/' + g.orders;
       bar = true;
-    } else if (g.state === 'eating') icon = '吃';
-    else if (g.state === 'wantPay') {
-      icon = '结账';
+    } else if (g.state === 'wantPay') {
+      icon = '💰';
       bar = true;
-    } else if (g.state === 'browse') icon = '…';
-    if (g.reg && !icon) icon = '熟';
+    } else if (g.state === 'browse') icon = '📖';
+    if (g.type === 'critic' && !icon) icon = '✍️';
     if (icon) {
       const f = bar ? Math.max(0, g.pat / g.patMax) : 1;
-      const bg = !bar ? 'rgba(255,255,255,0.92)' : f > 0.5 ? '#ffffff' : f > 0.25 ? '#ffe2a8' : '#ffb7ae';
-      badge(icon, top.cx, by, T * 0.27, bg, PAL.ink);
+      badge(icon, top.cx, by, T * 0.26, !bar || f > 0.5 ? 'rgba(255,255,255,0.95)' : f > 0.25 ? '#ffe2a8' : '#ffb7ae', PAL.ink);
       if (bar) {
         const w = T * 0.56;
-        fillRR(top.cx - w / 2, by + T * 0.19, w, T * 0.07, 2, 'rgba(0,0,0,0.35)');
-        fillRR(top.cx - w / 2, by + T * 0.19, w * f, T * 0.07, 2, f > 0.5 ? PAL.good : f > 0.25 ? PAL.warn : PAL.bad);
+        fillRR(top.cx - w / 2, by + T * 0.18, w, T * 0.07, 2, 'rgba(0,0,0,0.35)');
+        fillRR(top.cx - w / 2, by + T * 0.18, w * f, T * 0.07, 2, f > 0.5 ? PAL.good : f > 0.25 ? PAL.warn : PAL.bad);
       }
     }
-    if (g.reg || g.type === 'critic') circle(top.cx + T * 0.24, top.cy - T * 0.34, T * 0.07, g.reg ? '#c5382c' : '#1c1c1c');
+    if (g.reg) text('❤', top.cx + T * 0.3, top.cy - T * 0.1, T * 0.22, '#e0483a');
   }
+
+  // 给界面用的小图：把物品 / 人画到离屏画布上
+  const iconCache = {};
+  function offscreen(size, fn) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const keep = [ctx, T];
+    ctx = c.getContext('2d');
+    T = size;
+    try {
+      fn();
+    } finally {
+      ctx = keep[0];
+      T = keep[1];
+    }
+    return c.toDataURL();
+  }
+  R.itemIcon = function (type, tier) {
+    const k = type + (tier || 0);
+    if (!iconCache[k]) {
+      const cells = sim.cellsOf(type, 0, 0, 0);
+      const w = Math.max(...cells.map((c) => c.x)) + 1,
+        h = Math.max(...cells.map((c) => c.y)) + 1;
+      const n = Math.max(w, h);
+      iconCache[k] = offscreen(96, () => {
+        T = 96 / n;
+        ctx.translate(((n - w) * T) / 2, ((n - h) * T) / 2);
+        DRAW[type]({ id: -1, type, x: 0, y: 0, rot: 0, tier: tier || 0, dur: 100 }, 0, 0);
+      });
+    }
+    return iconCache[k];
+  };
+  R.staffIcon = function (s) {
+    const look = staffLook(s);
+    const k = 'p' + s.id + look.face + look.hat + s.color;
+    if (!iconCache[k])
+      iconCache[k] = offscreen(96, () => {
+        T = 110;
+        ctx.translate(-7, 6);
+        look.seed = s.id;
+        const c0 = clock;
+        clock = 1;
+        person(0, 0, look);
+        clock = c0;
+      });
+    return iconCache[k];
+  };
+  R.guestIcon = function (seed, face, body) {
+    const k = 'g' + (seed % 6) + face + body;
+    if (!iconCache[k])
+      iconCache[k] = offscreen(96, () => {
+        T = 110;
+        ctx.translate(-7, 6);
+        const c0 = clock;
+        clock = 1;
+        person(0, 0, { body, face, seed });
+        clock = c0;
+      });
+    return iconCache[k];
+  };
 
   // ---------- 特效 ----------
   function pullFx(S) {

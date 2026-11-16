@@ -12,16 +12,10 @@
   R.init(cv);
 
   function layout() {
-    const wide = window.matchMedia('(min-width: 960px)').matches;
-    if (wide !== UI.wide) {
-      UI.wide = wide;
-      if (UI.S) {
-        if (wide && !UI.sheet) UI.open('ledger');
-        if (!wide) UI.close();
-      }
-    }
     const st = $('#stage');
     R.resize(st.clientWidth, st.clientHeight);
+    // 竖着拿的小屏：提示横屏
+    $('#rotate').hidden = !(window.innerHeight > window.innerWidth && window.innerWidth < 700) || !!UI.flags.rotateOk;
   }
   window.addEventListener('resize', layout);
   if (window.ResizeObserver) new ResizeObserver(layout).observe($('#stage'));
@@ -81,6 +75,13 @@
     const T = r.width / C.COLS;
     return { fx: (e.clientX - r.left) / T, fy: (e.clientY - r.top) / T };
   }
+  // 工作表格子：右键反向切换
+  document.addEventListener('contextmenu', (e) => {
+    const el = e.target.closest('[data-act="prioCycle"]');
+    if (!el) return;
+    e.preventDefault();
+    UI.act('prioCycle', Object.assign({}, el.dataset, { dir: '-1' }));
+  });
   let down = null;
   cv.addEventListener('pointerdown', (e) => {
     down = { x: e.clientX, y: e.clientY };
