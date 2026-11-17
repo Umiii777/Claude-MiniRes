@@ -649,10 +649,10 @@
     }
     if (st.until && st.until(S)) return nextTut();
     if (cache.tut !== S.tut.step) {
-      cache.tut = S.tut.step;
       if (st.enter) st.enter();
       box.innerHTML = iconize('<div>' + st.text + '</div><div class="row"><button type="button" data-act="tutEnd">关掉引导</button>' + (st.skip ? '<button type="button" data-act="tutNext">' + st.skip + '</button>' : '') + (st.btn ? '<button type="button" class="go" data-act="tutNext">' + st.btn + '</button>' : '') + '</div>');
       clearHl();
+      cache.tut = S.tut.step;
       if (st.hl) {
         const el = $(st.hl);
         if (el) el.classList.add('hl');
