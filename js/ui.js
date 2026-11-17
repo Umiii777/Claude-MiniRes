@@ -8,6 +8,7 @@
   const sim = MR.sim;
   const R = MR.render;
   const IC = MR.ICON;
+  const iconize = MR.icons.iconize;
   const money = sim.money;
   const neg = (n) => (Math.round(n) > 0 ? '-' : '') + money(n);
   const $ = (s) => document.querySelector(s);
@@ -42,9 +43,13 @@
     if (!el) return;
     if (prop === 'class') el.className = v;
     else if (prop === 'hidden') el.hidden = v;
-    else if (prop === 'html') el.innerHTML = v;
+    else if (prop === 'html') el.innerHTML = iconize(v);
     else if (prop === 'width') el.style.width = v;
-    else el.textContent = v;
+    else {
+      const h = iconize(esc(v));
+      if (h !== esc(v)) el.innerHTML = h;
+      else el.textContent = v;
+    }
   }
   const meter = (f, cls) => '<div class="meter ' + (cls || '') + '"><i style="width:' + Math.round(Math.max(0, Math.min(1, f)) * 100) + '%"></i></div>';
   const lvl = (v, hi, lo) => (v >= hi ? 'g' : v >= lo ? 'a' : 'r');
@@ -112,7 +117,7 @@
       ['💰', p.pay, '等结账'],
     ];
     set('#rail', cells.map((c) => (c ? '<span class="st' + (c[1] >= 4 ? ' h' : c[1] >= 2 ? ' w' : '') + '" title="' + c[2] + '">' + c[0] + '<b>' + c[1] + '</b></span>' : '<span class="sep"></span>')).join(''), 'html');
-    set('#goal', goals(S).map((g) => '<li>' + esc(g) + '</li>').join(''), 'html');
+    set('#goal', goals(S).map((g) => '<li>🎯<span>' + esc(g) + '</span></li>').join(''), 'html');
     set('#goalbox', 'box' + (UI.flags.goalsOpen ? ' open' : ''), 'class');
     for (const b of document.querySelectorAll('#speed button')) b.classList.toggle('on', Number(b.dataset.v) === (UI.speed || UI.lastSpeed));
     set('#play', UI.speed ? '⏸' : '▶');
@@ -178,7 +183,7 @@
   UI.toast = function (text, kind) {
     const el = document.createElement('div');
     el.className = 'toast ' + (kind === 'warn' ? 'warn' : kind === 'good' || kind === 'win' ? 'good' : '');
-    el.textContent = text;
+    el.innerHTML = iconize(esc(text));
     $('#toasts').appendChild(el);
     setTimeout(() => el.classList.add('out'), 3600);
     setTimeout(() => el.remove(), 4100);
@@ -213,7 +218,7 @@
     if (cache.body !== v.html) {
       cache.body = v.html;
       const st = body.scrollTop;
-      body.innerHTML = v.html;
+      body.innerHTML = iconize(v.html);
       body.scrollTop = st;
     }
   };
@@ -448,7 +453,7 @@
     if (!h) return hidePop();
     if (cache.pop !== h) {
       cache.pop = h;
-      $('#pop').innerHTML = h;
+      $('#pop').innerHTML = iconize(h);
     }
     $('#pop').hidden = false;
   };
@@ -545,7 +550,7 @@
     }
     const d = MR.ITEMS[p.type];
     const tip = p.x == null ? '点地面放下' : p.ok ? '✅ 点击放下' : '⛔ ' + p.why;
-    bar.innerHTML = img(R.itemIcon(p.type, p.tier)) + '<div><b>' + (p.moveId ? '搬动 ' : '') + d.name + (p.moveId ? '' : ' ' + money(d.price)) + '</b><small class="' + (p.x != null && !p.ok ? 'no' : '') + '">' + tip + '</small></div>' + (d.rot ? '<button type="button" class="btn sm" data-act="rotate" title="旋转（R）">↻</button>' : '') + '<button type="button" class="btn sm primary" data-act="confirmPlace"' + (p.ok ? '' : ' disabled') + '>✓</button><button type="button" class="btn sm" data-act="cancelPlace" title="取消（Esc）">✕</button>';
+    bar.innerHTML = iconize(img(R.itemIcon(p.type, p.tier)) + '<div><b>' + (p.moveId ? '搬动 ' : '') + d.name + (p.moveId ? '' : ' ' + money(d.price)) + '</b><small class="' + (p.x != null && !p.ok ? 'no' : '') + '">' + tip + '</small></div>' + (d.rot ? '<button type="button" class="btn sm" data-act="rotate" title="旋转（R）">↻</button>' : '') + '<button type="button" class="btn sm primary" data-act="confirmPlace"' + (p.ok ? '' : ' disabled') + '>✓</button><button type="button" class="btn sm" data-act="cancelPlace" title="取消（Esc）">✕</button>');
     bar.hidden = false;
   };
   UI.confirmPlace = function () {
@@ -564,7 +569,7 @@
 
   // ================= 弹窗 =================
   function showModal(html) {
-    $('#modal-card').innerHTML = html;
+    $('#modal-card').innerHTML = iconize(html);
     $('#modal').hidden = false;
     $('#modal-card').scrollTop = 0;
   }
@@ -646,7 +651,7 @@
     if (cache.tut !== S.tut.step) {
       cache.tut = S.tut.step;
       if (st.enter) st.enter();
-      box.innerHTML = '<div>' + st.text + '</div><div class="row"><button type="button" data-act="tutEnd">关掉引导</button>' + (st.skip ? '<button type="button" data-act="tutNext">' + st.skip + '</button>' : '') + (st.btn ? '<button type="button" class="go" data-act="tutNext">' + st.btn + '</button>' : '') + '</div>';
+      box.innerHTML = iconize('<div>' + st.text + '</div><div class="row"><button type="button" data-act="tutEnd">关掉引导</button>' + (st.skip ? '<button type="button" data-act="tutNext">' + st.skip + '</button>' : '') + (st.btn ? '<button type="button" class="go" data-act="tutNext">' + st.btn + '</button>' : '') + '</div>');
       clearHl();
       if (st.hl) {
         const el = $(st.hl);

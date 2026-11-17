@@ -118,7 +118,21 @@
 
   // ---------- 启动 ----------
   function start(data) {
+    // 页面里写死的 emoji 代号换成图标
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) if (!/^(SCRIPT|STYLE)$/.test(walker.currentNode.parentNode.tagName)) nodes.push(walker.currentNode);
+    for (const n of nodes) {
+      const raw = n.nodeValue.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+      const h = MR.icons.iconize(raw);
+      if (h === raw) continue;
+      const span = document.createElement('span');
+      span.innerHTML = h;
+      n.replaceWith(...span.childNodes);
+    }
+    for (const el of document.querySelectorAll('[title]')) el.title = MR.icons.strip(el.title);
     layout();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
     if (data && data.save) {
       try {
         const S = sim.restore(data.save);

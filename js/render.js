@@ -17,24 +17,28 @@
     wall: '#2c6a58',
     wallTop: '#3d8a73',
     wallDark: '#1f4d40',
-    steel: '#b8c3c6',
-    steelDark: '#8a979b',
-    stove: '#3a4144',
-    woodItem: '#c2935a',
-    woodDark: '#9a6f3c',
-    table: '#d9ab6c',
-    stool: '#d4483b',
-    stoolDark: '#a8342a',
+    steel: '#d3dde1',
+    steelDark: '#9fb0b7',
+    stove: '#5a504c',
+    woodItem: '#d3a062',
+    woodDark: '#a8703c',
+    table: '#f0c27a',
+    stool: '#e2573f',
+    stoolDark: '#b93f2b',
     white: '#f7f9f8',
-    ink: '#1c2b27',
-    good: '#3aa26b',
-    warn: '#d99a1c',
-    bad: '#d2463a',
-    skin: '#f0c9a4',
+    ink: '#4b3329',
+    good: '#5fa65a',
+    warn: '#f6b93b',
+    bad: '#e2573f',
+    skin: '#f8d3b0',
   };
-  const APRON = ['#c5382c', '#2f7fb5', '#d9951a', '#7a5fb0', '#2e9a78', '#c15a8a'];
-  const GUEST_HUES = ['#7d8fa3', '#9c8468', '#6f9a86', '#a37b8f', '#8a8fb8', '#b08a5c'];
-  const TIER_COL = { god: '#b5179e', great: '#1f8a5b', good: '#2f7fb5', ok: '#7b8794', bad: '#d2463a' };
+  const APRON = ['#e2573f', '#4f9fd0', '#f6b93b', '#9a7fd0', '#3f9c8f', '#e88aa8'];
+  const GUEST_HUES = ['#8fb2d6', '#d9a36b', '#8fc7a6', '#d99ab0', '#a9a6e0', '#e0c06a'];
+  const TIER_COL = { god: '#b84fc9', great: '#3f9c8f', good: '#4f9fd0', ok: '#9a8f86', bad: '#e2573f' };
+  const INK = '#4b3329';
+  const DISP = '"ZCOOL KuaiLe","YouYuan","Yuanti SC",' + '"PingFang SC","Microsoft YaHei","WenQuanYi Zen Hei",sans-serif';
+  let OUT = true; // 是否给色块描边
+  const LW = () => Math.max(1.2, T * 0.04);
   R.TIER_COL = TIER_COL;
   const FONT = '"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Noto Sans SC","WenQuanYi Zen Hei","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
@@ -62,16 +66,31 @@
     if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
     else ctx.rect(x, y, w, h);
   }
+  // 所有色块统一描一圈深棕边，凑出手绘贴纸的感觉；半透明和太小的不描
   function fillRR(x, y, w, h, r, c) {
     ctx.fillStyle = c;
     rr(x, y, w, h, r);
     ctx.fill();
+    if (OUT && c[0] === '#' && Math.min(w, h) > T * 0.13) {
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = LW();
+      ctx.stroke();
+    }
   }
   function circle(x, y, r, c) {
     ctx.fillStyle = c;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 6.2832);
     ctx.fill();
+    if (OUT && c[0] === '#' && r > T * 0.075) {
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = LW();
+      ctx.stroke();
+    }
+  }
+  function icon(name, cx, cy, size) {
+    const im = MR.icons.image(name);
+    if (im && im.complete && im.naturalWidth) ctx.drawImage(im, cx - size / 2, cy - size / 2, size, size);
   }
   function text(s, x, y, size, c, align, weight) {
     ctx.font = (weight || 600) + ' ' + Math.round(size) + 'px ' + FONT;
@@ -80,84 +99,231 @@
     ctx.textBaseline = 'middle';
     ctx.fillText(s, x, y);
   }
+  // 贴纸气泡：文字版
   function badge(s, cx, cy, size, bg, fg) {
     size = Math.max(size, 11);
     ctx.font = '700 ' + Math.round(size * 0.82) + 'px ' + FONT;
-    const w = Math.max(size * 1.25, ctx.measureText(s).width + size * 0.5);
-    fillRR(cx - w / 2, cy - size * 0.62, w, size * 1.24, size * 0.4, bg);
+    const w = Math.max(size * 1.25, ctx.measureText(s).width + size * 0.6);
+    ctx.fillStyle = bg;
+    rr(cx - w / 2, cy - size * 0.66, w, size * 1.32, size * 0.66);
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = LW();
+    ctx.stroke();
     text(s, cx, cy + size * 0.04, size * 0.82, fg, 'center', 700);
+  }
+  // 贴纸气泡：图标（可带一小段字），底下带个小尖
+  function bubble(name, txt, cx, cy, size, bg) {
+    size = Math.max(size, 13);
+    ctx.font = '700 ' + Math.round(size * 0.7) + 'px ' + FONT;
+    const tw = txt ? ctx.measureText(txt).width + size * 0.2 : 0;
+    const w = size * 1.3 + tw;
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = LW();
+    ctx.beginPath();
+    ctx.moveTo(cx - size * 0.2, cy + size * 0.6);
+    ctx.lineTo(cx, cy + size * 0.92);
+    ctx.lineTo(cx + size * 0.2, cy + size * 0.6);
+    ctx.fill();
+    ctx.stroke();
+    rr(cx - w / 2, cy - size * 0.66, w, size * 1.32, size * 0.5);
+    ctx.fill();
+    ctx.stroke();
+    icon(name, cx - w / 2 + size * 0.65, cy, size);
+    if (txt) text(txt, cx + w / 2 - tw / 2 - size * 0.2, cy + size * 0.04, size * 0.7, INK, 'center', 700);
   }
 
   // ---------- 地面与墙 ----------
+  const night = (S) => Math.max(0, Math.min(1, (S.minute - 1050) / 120));
+  function line(x1, y1, x2, y2, c, w) {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w || 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
   function drawFloor(S) {
+    const nt = night(S);
+    OUT = false;
     for (let y = 0; y < C.ROWS; y++)
       for (let x = 0; x < C.COLS; x++) {
         const px = x * T,
           py = y * T;
         if (y === C.STREET_Y) {
-          ctx.fillStyle = PAL.street;
-          ctx.fillRect(px, py, T, T);
-          ctx.fillStyle = PAL.streetLine;
-          ctx.fillRect(px + T * 0.1, py + T * 0.48, T * 0.8, T * 0.04);
+          ctx.fillStyle = '#d8ccb6';
+          ctx.fillRect(px, py, T, T * 0.42);
+          line(px + T * (x % 2 ? 0.3 : 0.7), py, px + T * (x % 2 ? 0.3 : 0.7), py + T * 0.42, 'rgba(75,51,41,0.18)', 1);
+          ctx.fillStyle = '#b9ad98';
+          ctx.fillRect(px, py + T * 0.42, T, T * 0.08);
+          ctx.fillStyle = '#5c6270';
+          ctx.fillRect(px, py + T * 0.5, T, T * 0.5);
+          ctx.fillStyle = '#f2c14e';
+          ctx.fillRect(px + T * 0.15, py + T * 0.78, T * 0.5, T * 0.05);
           continue;
         }
         const z = sim.zoneAt(x, y);
         if (z) {
-          if (z.kind === 'kitchen') ctx.fillStyle = (x + y) % 2 ? PAL.kitchenA : PAL.kitchenB;
-          else ctx.fillStyle = y % 2 ? PAL.woodA : PAL.woodB;
-          ctx.fillRect(px, py, T, T);
-          if (z.kind === 'dining') {
-            ctx.fillStyle = 'rgba(120,80,30,0.10)';
-            ctx.fillRect(px + ((x * 7 + y * 3) % 5) * T * 0.2, py, 1, T);
+          if (z.kind === 'kitchen') {
+            ctx.fillStyle = (x + y) % 2 ? '#fdf6e6' : '#c4e6da';
+            ctx.fillRect(px, py, T, T);
+            ctx.strokeStyle = 'rgba(75,51,41,0.13)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 0.5, py + 0.5, T, T);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillRect(px + T * 0.1, py + T * 0.1, T * 0.22, T * 0.06);
+          } else {
+            ctx.fillStyle = y % 2 ? '#efca90' : '#e7bd80';
+            ctx.fillRect(px, py, T, T);
+            const sx = px + ((x + (y % 2 ? 0 : 1)) % 2 ? T * 0.5 : 0);
+            line(px, py + T - 0.5, px + T, py + T - 0.5, 'rgba(75,51,41,0.22)', 1);
+            line(sx + 0.5, py, sx + 0.5, py + T, 'rgba(75,51,41,0.18)', 1);
+            const k = (x * 7 + y * 13) % 5;
+            line(px + T * (0.15 + k * 0.1), py + T * 0.35, px + T * (0.45 + k * 0.1), py + T * 0.35, 'rgba(255,255,255,0.28)', Math.max(1, T * 0.03));
+            line(px + T * (0.5 - k * 0.06), py + T * 0.7, px + T * (0.75 - k * 0.06), py + T * 0.7, 'rgba(150,95,40,0.22)', Math.max(1, T * 0.03));
           }
         } else if (sim.isDoor(x, y)) {
-          ctx.fillStyle = y === C.DOOR.y ? '#cdb891' : PAL.kitchenB;
-          ctx.fillRect(px, py, T, T);
+          if (y === C.DOOR.y) {
+            ctx.fillStyle = '#e7bd80';
+            ctx.fillRect(px, py, T, T);
+            OUT = true;
+            fillRR(px + T * 0.1, py + T * 0.2, T * 0.8, T * 0.62, T * 0.08, '#d9573f');
+            OUT = false;
+            for (let i = 1; i < 4; i++) line(px + T * 0.1 + i * T * 0.2, py + T * 0.26, px + T * 0.1 + i * T * 0.2, py + T * 0.76, 'rgba(255,240,210,0.6)', Math.max(1, T * 0.04));
+          } else {
+            ctx.fillStyle = '#e9dcc0';
+            ctx.fillRect(px, py, T, T);
+            line(px, py + T * 0.5, px + T, py + T * 0.5, 'rgba(75,51,41,0.15)', 1);
+          }
         } else {
-          // 墙
-          ctx.fillStyle = PAL.wall;
+          // 墙：木墙裙
+          ctx.fillStyle = '#3f8478';
           ctx.fillRect(px, py, T, T);
-          ctx.fillStyle = PAL.wallTop;
-          ctx.fillRect(px, py, T, T * 0.28);
-          ctx.fillStyle = PAL.wallDark;
-          ctx.fillRect(px, py + T * 0.9, T, T * 0.1);
-          if (y === C.DOOR.y && x !== C.DOOR.x && x % 2 === 1) {
-            // 临街的窗
-            fillRR(px + T * 0.12, py + T * 0.36, T * 0.76, T * 0.44, 2, '#bfe1e6');
-            ctx.fillStyle = PAL.wallDark;
-            ctx.fillRect(px + T * 0.49, py + T * 0.36, T * 0.03, T * 0.44);
+          ctx.fillStyle = '#5bab9b';
+          ctx.fillRect(px, py, T, T * 0.3);
+          ctx.fillStyle = '#2b5f58';
+          ctx.fillRect(px, py + T * 0.86, T, T * 0.14);
+          line(px + T * 0.5, py + T * 0.3, px + T * 0.5, py + T * 0.86, 'rgba(20,50,45,0.35)', 1);
+          line(px, py + T * 0.3, px + T, py + T * 0.3, INK, LW());
+          line(px, py + 0.5, px + T, py + 0.5, INK, LW());
+          line(px, py + T - 0.5, px + T, py + T - 0.5, INK, LW());
+          if (y === C.DOOR.y && Math.abs(x - C.DOOR.x) > 1 && x % 2 === 0) {
+            // 临街的窗：白天映着天，晚上透出灯
+            OUT = true;
+            fillRR(px + T * 0.1, py + T * 0.36, T * 0.8, T * 0.46, T * 0.06, '#fff6e3');
+            OUT = false;
+            ctx.fillStyle = nt > 0.3 ? '#ffd98a' : '#bfe6f2';
+            ctx.fillRect(px + T * 0.17, py + T * 0.42, T * 0.66, T * 0.34);
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            ctx.fillRect(px + T * 0.22, py + T * 0.46, T * 0.1, T * 0.2);
+            line(px + T * 0.5, py + T * 0.42, px + T * 0.5, py + T * 0.76, INK, LW());
           }
         }
       }
-    // 招牌
-    const sx = (C.DOOR.x + 0.5) * T;
-    fillRR(sx - T * 1.05, C.DOOR.y * T - T * 0.16, T * 2.1, T * 0.42, T * 0.08, '#b22f25');
-    text('一间小馆', sx, C.DOOR.y * T + T * 0.06, T * 0.3, '#ffe9c2', 'center', 700);
-    // 未解锁区域
+    OUT = true;
+    // 区域边缘描一圈
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = LW();
+    for (const z of MR.ZONES) ctx.strokeRect(z.x0 * T, z.y0 * T, (z.x1 - z.x0 + 1) * T, (z.y1 - z.y0 + 1) * T);
+    // 门口的条纹雨棚和招牌
+    const dx = (C.DOOR.x + 0.5) * T,
+      dy = C.DOOR.y * T;
+    const aw = T * 2.6,
+      n = 8;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = i % 2 ? '#fff6e3' : '#e2573f';
+      ctx.beginPath();
+      ctx.moveTo(dx - aw / 2 + (aw / n) * i, dy + T * 0.86);
+      ctx.lineTo(dx - aw / 2 + (aw / n) * (i + 1), dy + T * 0.86);
+      ctx.lineTo(dx - aw * 0.58 + ((aw * 1.16) / n) * (i + 1), dy + T * 1.2);
+      ctx.lineTo(dx - aw * 0.58 + ((aw * 1.16) / n) * i, dy + T * 1.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = LW();
+      ctx.stroke();
+    }
+    fillRR(dx - T * 1.25, dy + T * 0.06, T * 2.5, T * 0.62, T * 0.14, '#e2573f');
+    ctx.font = '400 ' + Math.round(T * 0.42) + 'px ' + DISP;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#b93f2b';
+    ctx.fillText('一间小馆', dx, dy + T * 0.42);
+    ctx.fillStyle = '#fff6e3';
+    ctx.fillText('一间小馆', dx, dy + T * 0.38);
+    // 未解锁区域：盖着防尘布，挂一块牌子
     for (const z of MR.ZONES) {
       if (S.zones[z.id]) continue;
       const x = z.x0 * T,
         y = z.y0 * T,
         w = (z.x1 - z.x0 + 1) * T,
         h = (z.y1 - z.y0 + 1) * T;
-      ctx.fillStyle = 'rgba(28,43,39,0.62)';
+      ctx.fillStyle = 'rgba(38,58,62,0.88)';
       ctx.fillRect(x, y, w, h);
       ctx.save();
       ctx.beginPath();
       ctx.rect(x, y, w, h);
       ctx.clip();
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = T * 0.18;
-      for (let i = -h; i < w; i += T * 0.7) {
+      ctx.strokeStyle = 'rgba(255,246,227,0.06)';
+      ctx.lineWidth = T * 0.22;
+      for (let i = -h; i < w; i += T * 0.8) {
         ctx.beginPath();
         ctx.moveTo(x + i, y + h);
         ctx.lineTo(x + i + h, y);
         ctx.stroke();
       }
       ctx.restore();
-      text(z.name, x + w / 2, y + h / 2 - T * 0.24, T * 0.36, '#e9f2ee', 'center', 700);
-      text('解锁 ' + sim.money(z.price), x + w / 2, y + h / 2 + T * 0.22, T * 0.3, '#ffd98a', 'center', 600);
+      ctx.setLineDash([T * 0.22, T * 0.16]);
+      ctx.strokeStyle = 'rgba(255,246,227,0.5)';
+      ctx.lineWidth = Math.max(1.5, T * 0.05);
+      rr(x + T * 0.18, y + T * 0.18, w - T * 0.36, h - T * 0.36, T * 0.2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const cx = x + w / 2,
+        cy = y + h / 2;
+      const tw = Math.min(w - T * 0.6, T * 2.9);
+      fillRR(cx - tw / 2, cy - T * 0.62, tw, T * 1.24, T * 0.2, '#fff6e3');
+      icon('lock', cx - tw / 2 + T * 0.42, cy - T * 0.24, T * 0.5);
+      ctx.font = '400 ' + Math.round(T * 0.34) + 'px ' + DISP;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = INK;
+      ctx.fillText(z.name, cx - tw / 2 + T * 0.74, cy - T * 0.24);
+      fillRR(cx - tw / 2 + T * 0.2, cy + T * 0.08, tw - T * 0.4, T * 0.4, T * 0.2, '#f6b93b');
+      text(sim.money(z.price), cx, cy + T * 0.29, T * 0.28, INK, 'center', 700);
     }
+  }
+  // 暖光：吊灯的光斑、傍晚压暗、四角暗角
+  function drawLight(S) {
+    const W = C.COLS * T,
+      H = C.ROWS * T;
+    const nt = night(S);
+    if (nt > 0) {
+      ctx.fillStyle = 'rgba(30,28,74,' + 0.3 * nt + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    const pool = (cx, cy, r, a) => {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(255,196,110,' + a + ')');
+      g.addColorStop(1, 'rgba(255,196,110,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    };
+    const a = 0.06 + 0.2 * nt;
+    for (const z of MR.ZONES) {
+      if (!S.zones[z.id]) continue;
+      const cy = ((z.y0 + z.y1 + 1) / 2) * T;
+      for (let x = z.x0 + 1.5; x < z.x1 + 1; x += 3) pool(x * T, cy, T * 2.6, a);
+    }
+    for (const it of S.items) if (it.type === 'lamp') pool((it.x + 0.5) * T, (it.y + 0.4) * T, T * 1.8, 0.1 + 0.25 * nt);
+    if (nt > 0.3) pool((C.DOOR.x + 0.5) * T, (C.DOOR.y + 1) * T, T * 2.2, 0.22 * nt);
+    ctx.globalCompositeOperation = 'source-over';
+    const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.72);
+    v.addColorStop(0, 'rgba(40,20,10,0)');
+    v.addColorStop(1, 'rgba(40,20,10,' + (0.22 + 0.12 * nt) + ')');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, W, H);
   }
 
   // ---------- 物品 ----------
@@ -363,6 +529,11 @@
     const def = MR.ITEMS[it.type];
     const px = it.x * T,
       py = it.y * T;
+    if (!def.seats) {
+      ctx.fillStyle = 'rgba(60,35,20,0.2)';
+      rr(px + T * 0.1, py + T * 0.16, T * 0.9, T * 0.88, T * 0.14);
+      ctx.fill();
+    }
     DRAW[it.type](it, px, py);
     if (def.label) {
       const s = T * 0.3;
@@ -544,7 +715,11 @@
     ctx.beginPath();
     ctx.arc(cx, hy - hr * 0.08, hr * 1.02, Math.PI * 1.02, Math.PI * 1.98);
     ctx.quadraticCurveTo(cx, hy - hr * (style === 1 ? 0.2 : 0.55), cx - hr * 1.02, hy - hr * 0.14);
+    ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = LW();
+    ctx.stroke();
     if (style === 2) {
       circle(cx - hr * 0.95, hy + hr * 0.25, hr * 0.3, hair);
       circle(cx + hr * 0.95, hy + hr * 0.25, hr * 0.3, hair);
@@ -585,15 +760,23 @@
     }
     const by = p.top - T * 0.14;
     if (t) {
-      const icon = t.job === 'rest' ? MR.ICON.rest : MR.ICON[t.job] || '…';
-      badge(icon, p.cx, by, T * 0.3, t.forced ? '#ffd24a' : 'rgba(255,255,255,0.95)', PAL.ink);
+      bubble(MR.icons.nameOf(MR.ICON[t.job] || MR.ICON.rest), null, p.cx, by - T * 0.06, T * 0.32, t.forced ? '#f6b93b' : '#fff6e3');
       if (t.work && t.dur > 0.6) {
         const w = T * 0.56;
         fillRR(p.cx - w / 2, by + T * 0.2, w, T * 0.07, 2, 'rgba(0,0,0,0.35)');
         fillRR(p.cx - w / 2, by + T * 0.2, w * Math.min(1, t.t / t.dur), T * 0.07, 2, '#3aa26b');
       }
     }
-    text(s.owner ? '店主' : s.name, p.cx, p.cy + T * 0.56, Math.max(10, T * 0.2), 'rgba(20,32,29,0.9)', 'center', 700);
+    const nm = s.owner ? '店主' : s.name;
+    ctx.font = '400 ' + Math.round(Math.max(11, T * 0.23)) + 'px ' + DISP;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(2.5, T * 0.07);
+    ctx.strokeStyle = '#fff6e3';
+    ctx.lineJoin = 'round';
+    ctx.strokeText(nm, p.cx, p.cy + T * 0.6);
+    ctx.fillStyle = INK;
+    ctx.fillText(nm, p.cx, p.cy + T * 0.6);
   }
   function drawGroup(S, g, sel) {
     const tp = MR.GUEST_TYPES[g.type] || MR.GUEST_TYPES.passerby;
@@ -616,33 +799,37 @@
       ctx.stroke();
     }
     const by = top.top - T * 0.12;
-    let icon = null,
+    let ic = null,
+      txt = null,
       bar = false;
-    if (g.kind === 'visitor') icon = g.vtype === 'inspector' ? '🔍' : '🏠';
+    if (g.kind === 'visitor') ic = g.vtype === 'inspector' ? 'search' : 'house';
     else if (g.state === 'queue') {
-      icon = '⏳';
+      ic = 'hourglass';
       bar = true;
     } else if (g.state === 'wantOrder') {
-      icon = '🙋';
+      ic = 'hand';
       bar = true;
     } else if (g.state === 'waitFood') {
-      icon = '🍜' + g.served + '/' + g.orders;
+      ic = 'noodle';
+      txt = g.served + '/' + g.orders;
       bar = true;
     } else if (g.state === 'wantPay') {
-      icon = '💰';
+      ic = 'coin';
       bar = true;
-    } else if (g.state === 'browse') icon = '📖';
-    if (g.type === 'critic' && !icon) icon = '✍️';
-    if (icon) {
+    } else if (g.state === 'browse') ic = 'book';
+    if (g.type === 'critic' && !ic) ic = 'pen';
+    if (ic) {
       const f = bar ? Math.max(0, g.pat / g.patMax) : 1;
-      badge(icon, top.cx, by, T * 0.26, !bar || f > 0.5 ? 'rgba(255,255,255,0.95)' : f > 0.25 ? '#ffe2a8' : '#ffb7ae', PAL.ink);
+      bubble(ic, txt, top.cx, by - T * 0.06, T * 0.3, !bar || f > 0.5 ? '#fff6e3' : f > 0.25 ? '#ffe08a' : '#ffb3a6');
       if (bar) {
-        const w = T * 0.56;
-        fillRR(top.cx - w / 2, by + T * 0.18, w, T * 0.07, 2, 'rgba(0,0,0,0.35)');
-        fillRR(top.cx - w / 2, by + T * 0.18, w * f, T * 0.07, 2, f > 0.5 ? PAL.good : f > 0.25 ? PAL.warn : PAL.bad);
+        const w = T * 0.6;
+        fillRR(top.cx - w / 2, by + T * 0.26, w, T * 0.1, T * 0.05, '#fff6e3');
+        OUT = false;
+        fillRR(top.cx - w / 2, by + T * 0.26, w * f, T * 0.1, T * 0.05, f > 0.5 ? PAL.good : f > 0.25 ? PAL.warn : PAL.bad);
+        OUT = true;
       }
     }
-    if (g.reg) text('❤', top.cx + T * 0.3, top.cy - T * 0.1, T * 0.22, '#e0483a');
+    if (g.reg) icon('heart', top.cx + T * 0.34, top.cy - T * 0.16, T * 0.3);
   }
 
   // 给界面用的小图：把物品 / 人画到离屏画布上
@@ -730,12 +917,12 @@
         const tn = MR.TIERS.find((t) => t.key === f.tier).name;
         badge(f.total + ' ' + tn, cx, cy, T * 0.34, TIER_COL[f.tier], '#fff');
       } else if (f.k === 'pay') {
-        badge(f.text, cx, cy, T * 0.32, '#1c2b27', '#ffe08a');
-        text('★'.repeat(f.stars), cx, cy + T * 0.36, T * 0.24, '#ffb300', 'center', 700);
+        badge(f.text, cx, cy, T * 0.34, '#f6b93b', INK);
+        for (let j = 0; j < f.stars; j++) icon('star', cx + (j - (f.stars - 1) / 2) * T * 0.24, cy + T * 0.42, T * 0.26);
       } else if (f.k === 'angry') {
         badge('走了!', cx, cy, T * 0.32, PAL.bad, '#fff');
       } else if (f.k === 'say') {
-        badge(f.text, cx, cy, T * 0.3, '#ffffff', PAL.ink);
+        badge(f.text, cx, cy, T * 0.3, '#fff6e3', INK);
       } else if (f.k === 'smoke') {
         for (let j = 0; j < 4; j++) circle(cx + Math.sin(j * 2 + f.age * 3) * T * 0.2, cy + T * 0.4 - j * T * 0.12, T * (0.12 + u * 0.1), 'rgba(60,60,60,0.5)');
       }
@@ -808,6 +995,7 @@
       if (p.s) drawStaff(S, p.s, view.sel && view.sel.kind === 'staff' && view.sel.id === p.s.id);
       else drawGroup(S, p.g, view.sel && view.sel.kind === 'group' && view.sel.id === p.g.id);
     }
+    drawLight(S);
     drawWeather(S);
     pullFx(S);
     drawFx(dt);

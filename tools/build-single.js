@@ -23,7 +23,8 @@ const markup = body.replace(/<script src="([^"]+)"><\/script>\s*/g, (_, src) => 
 const js = scripts.map((s) => '<script>\n' + s + '\n</script>').join('\n');
 let page;
 if (fragment) {
-  page = '<title>一间小馆</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n<style>\n' + css + '\n</style>\n' + markup.trim() + '\n' + js + '\n';
+  const font = (html.match(/<link rel="stylesheet" href="https:\/\/fonts[^>]+>/) || [''])[0];
+  page = '<title>一间小馆</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n' + font + '\n<style>\n' + css + '\n</style>\n' + markup.trim() + '\n' + js + '\n';
 } else {
   const head = html.slice(0, html.indexOf('<link rel="stylesheet"'));
   page = head + '<style>\n' + css + '\n</style>\n</head>\n<body>' + markup + js + '\n</body>\n</html>\n';
