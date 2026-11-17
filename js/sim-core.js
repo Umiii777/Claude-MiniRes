@@ -54,6 +54,13 @@
   sim.dow = (S) => (S.day - 1) % 7;
   sim.rent = (S) => MR.rentOf(sim.week(S));
   sim.minutesToRent = (S) => (6 - sim.dow(S)) * 1440 + (C.DAY_END - S.minute);
+  // 和左侧倒计时同一套算法。过了 22:00 只要不满整整一天，天数就少算一天，避免日结卡写「还 6 天」、侧栏已经是 5 天。
+  sim.rentLeft = function (S) {
+    const m = Math.max(0, sim.minutesToRent(S));
+    const days = Math.floor(m / 1440);
+    if (days >= 1) return { days, text: days + ' 天' };
+    return { days: 0, text: Math.max(0, Math.ceil(m / 60)) + ' 小时' };
+  };
   sim.afterRent = (S) => S.cash - (S.bought ? 0 : sim.rent(S));
   sim.phase = function (S) {
     const m = S.minute;
@@ -471,6 +478,12 @@
     S.stock[k].push({ q, age: (1 - (fr == null ? 1 : fr)) * MR.INGREDIENTS[k].life });
   }
   _.addStock = addStock;
+  function takeDelivery(S, d) {
+    for (const k in d.items) addStock(S, k, d.items[k], d.fresh && d.fresh[k]);
+    const i = S.deliveries.indexOf(d);
+    if (i >= 0) S.deliveries.splice(i, 1);
+  }
+  _.takeDelivery = takeDelivery;
   // 先用最老的一批；返回这几份的平均新鲜度
   function takeStock(S, k, q) {
     const arr = S.stock[k];
@@ -572,9 +585,34 @@
     return { ok: true, cost, items };
   }
   _.restock = restock;
+  // 周一开张、还没进过货、人还没上门：这一单直接上架。以后的补货仍走 25 分钟，避免玩家以为钱扣了却没买到。
+  function openingRestock(S) {
+    return S.day === 1 && !S.flags.openedRestock && !sim.inService(S) && !S.deliveries.some((d) => !d.bad);
+  }
+  sim.ensureOpeningStock = function (S) {
+    if (S.day !== 1 || S.flags.openedRestock) return { ok: true, skipped: true };
+    if (MR.ING_ORDER.some((k) => sim.stockQty(S, k) > 0)) {
+      S.flags.openedRestock = true;
+      return { ok: true, skipped: true };
+    }
+    const pending = S.deliveries.filter((d) => !d.bad);
+    if (pending.length) {
+      for (const d of pending.slice()) takeDelivery(S, d);
+      S.flags.openedRestock = true;
+      log(S, '开张的货到了，可以做菜了。以后再补货大约 25 分钟才入库，到之前菜单标「在途」。', 'stock', true);
+      return { ok: true, flushed: true };
+    }
+    const r = restock(S, 0);
+    if (!r.ok) return r;
+    takeDelivery(S, S.deliveries[S.deliveries.length - 1]);
+    S.flags.openedRestock = true;
+    log(S, '开张的货已经入库，花了 ' + money(r.cost) + '。以后再补货大约 25 分钟才到，到之前菜单标「在途」。', 'stock', true);
+    return r;
+  };
   sim.restockNow = function (S) {
+    if (openingRestock(S)) return sim.ensureOpeningStock(S);
     const r = restock(S, 25);
-    if (r.ok) log(S, '下了一单补货 ' + money(r.cost) + '，约 25 分钟后到', 'stock');
+    if (r.ok) log(S, '下了一单补货 ' + money(r.cost) + '，约 25 分钟后到。到之前菜单标「在途」，还不能做。', 'stock', true);
     return r;
   };
   sim.setTarget = function (S, k, v) {
