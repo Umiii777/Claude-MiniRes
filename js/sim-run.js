@@ -678,6 +678,7 @@
     S.ratings.push({ n: S.rateN, day: S.day, m: Math.floor(S.minute), dish: t.dish, sc: Object.assign({}, t.sc), total, tier: tier.key, by: t.by, over: t.over || 0, guest: g.label });
     if (S.ratings.length > 40) S.ratings.shift();
     S.flags.rated = true;
+    if (!S.flags.ratedPhase) S.flags.ratedPhase = sim.phase(S);
     const table = itemById(S, g.table);
     fx(S, { k: 'score', x: table ? table.x + (table.type === 'table2' && !table.rot ? 1 : 0.5) : s.x, y: table ? table.y : s.y, total, tier: tier.key });
     const cook = S.staff.find((o) => o.id === t.cookId);
@@ -765,6 +766,7 @@
     g.state = 'waitFood';
     g.patMax = g.pat = 42 * MR.GUEST_TYPES[g.type].patience;
     S.flags.ordered = true;
+    if (!S.flags.orderedPhase) S.flags.orderedPhase = sim.phase(S);
   }
   function findTable(S, size) {
     let best = null;
@@ -799,7 +801,10 @@
     if (tb && !S.groups.some((o) => o.state === 'queue' && o !== g)) sit(S, g, tb);
     else {
       const wc = Math.min(3, S.items.filter((it) => it.type === 'waitchair').length);
-      g.patMax = g.pat = 30 * tp.patience * (1 + 0.25 * wc);
+      let pat = 30 * tp.patience * (1 + 0.25 * wc);
+      // 平静头两天门口只排得下一小波人，再给一点耐心，让这一位多半能等到桌子，而不是连着走掉。
+      if (S.story !== 'tense' && S.day <= 2) pat *= 1.4;
+      g.patMax = g.pat = pat;
     }
     return g;
   }
@@ -1131,8 +1136,33 @@
     let r = (MR.TUNE.arrive / 60) * (0.35 + S.rep / 45) * curve * priceFactor(S);
     if (S.ev.weather === 'rain') r *= 0.55;
     if (S.ev.festival) r *= 1.7;
-    return r;
+    return r * openingCrowd(S);
   };
+  // 平静档头两天客流跟着座位走，周一午市再错开。
+  // 开局只有两张双人桌、一口锅，原曲线会在门口堆出一长队并连着走掉，新人还没看清后厨就觉得自己在失败。
+  // 紧张档、以及第三天起，恢复原曲线：周租、涨租和买断压力不动。
+  function openingCrowd(S) {
+    if (S.story === 'tense' || S.day > 2) return 1;
+    let f = 1;
+    if (S.day === 1 && sim.phase(S) === 'lunch') {
+      const t = (S.minute - C.LUNCH_START) / 45;
+      f *= Math.max(0.38, Math.min(1, 0.38 + 0.62 * t));
+    } else if (S.day === 1) f *= 0.82;
+    else f *= 0.9;
+    const seats = Math.max(2, sim.seats(S));
+    let seated = 0,
+      q = 0;
+    for (const g of S.groups) {
+      if (g.kind !== 'guest' || g.state === 'leaving') continue;
+      if (g.state === 'queue') q++;
+      else seated += g.size;
+    }
+    const load = (seated + q * 2) / seats;
+    // 已经有人在门口等，就先别再往里塞，避免一串人一起失去耐心。
+    if (q >= 1) return 0;
+    if (load >= 1) f *= 0.45;
+    return f;
+  }
   MR.TUNE = { arrive: 2.0, kitchen: 0.55 };
 
   function spawnRandom(S) {
@@ -1379,6 +1409,8 @@
             S.modals.push({ type: 'choice', id: 'badbatch', k, title: '这批货不太新鲜', text: '今天到的 ' + d.items[k] + ' 份' + MR.INGREDIENTS[k].name + '一看就不新鲜。供货商站在门口等你说话。', options: [{ label: '退货', desc: '拿回货款，但今天缺这样食材，相关的菜可能要撤' }, { label: '留作员工餐', desc: '不退钱，今天的员工餐有着落，大家会有点嫌弃' }, { label: '照常上菜', desc: '省事，但这批货做出的菜食材分很低，可能翻车' }] });
           }
         }
+        // 准时的早市货立刻上架。迟到和待处理的坏货仍留在途中，等时钟或玩家决定。
+        if (d && !d.bad && d.at <= S.clock) _.takeDelivery(S, d);
       } else if (r.why === '现金不够进货') log(S, '现金不够，今天没能补货', 'warn', true);
     }
     S.sched.sort((a, b) => a.at - b.at);
@@ -1453,7 +1485,8 @@
     }
     const t = S.today;
     const operating = t.rev - t.food - t.wages - t.util - t.fines - t.repair - t.other;
-    const rec = Object.assign({}, t, { day: S.day, dow: sim.dow(S), week: sim.week(S), operating, net: operating - t.build, cash: S.cash, rep: S.rep, rent: sim.rent(S), daysLeft: 6 - sim.dow(S), bought: S.bought, quits: quits.map((s) => s.name) });
+    const left = sim.rentLeft(S);
+    const rec = Object.assign({}, t, { day: S.day, dow: sim.dow(S), week: sim.week(S), operating, net: operating - t.build, cash: S.cash, rep: S.rep, rent: sim.rent(S), daysLeft: left.days, rentLeft: left.text, bought: S.bought, quits: quits.map((s) => s.name) });
     rec.hint = dayHint(S, t, operating);
     S.days.push(rec);
     if (S.days.length > 35) S.days.shift();

@@ -57,9 +57,24 @@
 
   // ================= 常驻信息 =================
   function leftText(S) {
-    const m = sim.minutesToRent(S);
-    const d = Math.floor(m / 1440);
-    return d >= 1 ? '⏳ ' + d + ' 天' : '⏳ ' + Math.max(0, Math.ceil(m / 60)) + ' 小时';
+    return '⏳ ' + sim.rentLeft(S).text;
+  }
+  function pendingQty(S, k) {
+    let n = 0;
+    for (const d of S.deliveries) if (!d.bad) n += d.items[k] || 0;
+    return n;
+  }
+  // 缺的料都已经在途，就不要显示成「缺料」，否则玩家会以为补货失败。
+  function dishOnTheWay(S, id) {
+    const d = MR.DISHES[id];
+    let wait = false;
+    for (const k in d.ing) {
+      const have = sim.stockQty(S, k);
+      if (have >= d.ing[k]) continue;
+      if (have + pendingQty(S, k) < d.ing[k]) return false;
+      wait = true;
+    }
+    return wait;
   }
   UI.hud = function () {
     const S = UI.S;
@@ -272,7 +287,8 @@
           html += '<div class="rowi off">' + stIcon + '<div class="main"><h4>🔒 ' + d.name + '</h4><p>' + ingIcons(d) + '　参考 ' + money(d.ref) + '</p></div><div class="side"><button type="button" class="btn sm" data-act="research" data-id="' + id + '"' + (S.research || S.cash < d.research.cost ? ' disabled' : '') + ' title="研发后才能上菜单">🧪 ' + (busy ? '研发中' : money(d.research.cost)) + '</button></div></div>';
           continue;
         }
-        const st = ST[sim.dishStatus(S, id)];
+        const stKey = sim.dishStatus(S, id);
+        const st = stKey === 'nostock' && dishOnTheWay(S, id) ? ['在途', 'a'] : ST[stKey];
         const feel = sim.priceFeel(S, id);
         const avg = m.n ? Math.round(m.sum) : null;
         html += '<div class="rowi' + (m.on ? '' : ' off') + '">' + stIcon + '<div class="main"><h4>' + d.name + (st[0] ? ' <span class="tag ' + st[1] + '">' + st[0] + '</span>' : '') + (avg != null ? ' <span class="tag" style="color:#fff;background:' + R.TIER_COL[MR.tierOf(avg).key] + '" title="近期平均分">' + avg + '</span>' : '') + '</h4><p>' + ingIcons(d) + '　进价 ' + money(sim.dishCost(id)) + '　卖出 ' + m.sold + '</p></div><div class="side"><div class="stepper ' + feel.k + '" title="' + feel.t + '\n客人心理价位约 ' + money(sim.fairPrice(S, id)) + '（出品越好越高）"><button type="button" data-act="price" data-id="' + id + '" data-d="-1">−</button><b>' + money(m.price) + '</b><button type="button" data-act="price" data-id="' + id + '" data-d="1">+</button></div><button type="button" class="icobtn" data-act="toggleDish" data-id="' + id + '" title="' + (m.on ? '下架' : '上架') + '">' + (m.on ? '👁️' : '🚫') + '</button></div></div>';
@@ -295,7 +311,14 @@
         for (const d of S.deliveries) pend += d.items[k] || 0;
         html += '<div class="rowi" title="' + ing.name + '：单价 ' + money(ing.price) + '，常温可放 ' + ing.life + ' 天"><span class="em">' + IC[k] + '</span><div class="main"><h4>' + ing.name + ' <b class="num">' + q + '</b>' + (pend ? '<span class="tag a">🚚 +' + pend + '</span>' : '') + '<span class="tag">' + money(ing.price) + '</span></h4>' + (q ? meter(f.avg, f.min < 0.25 ? 'r' : f.min < 0.5 ? 'a' : 'g') : '') + '</div><div class="side"><span class="tag" title="每天早上补到这个数">🎯</span><div class="stepper"><button type="button" data-act="target" data-id="' + k + '" data-d="-2">−</button><b>' + S.targets[k] + '</b><button type="button" data-act="target" data-id="' + k + '" data-d="2">+</button></div></div></div>';
       }
-      html += '<div class="rowi" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn primary" data-act="restock"' + (plan.cost <= 0 ? ' disabled' : '') + ' title="约 25 分钟到货">🛒 补货' + (plan.cost > 0 ? ' ' + money(plan.cost) : '') + '</button><button type="button" class="btn" data-act="autoRestock" title="每天早上自动补到目标">🔁 自动 ' + (S.autoRestock ? '开' : '关') + '</button><button type="button" class="btn" data-act="suggest" title="按昨天的用量设目标">📊 按昨日</button></div>';
+      let soon = null;
+      for (const d of S.deliveries) {
+        if (d.bad) continue;
+        const wait = Math.max(0, Math.ceil(d.at - S.clock));
+        if (soon == null || wait < soon) soon = wait;
+      }
+      if (soon != null) html += '<div class="note">在途的货大约 ' + soon + ' 分钟后入库（时间停着就不往前走）。到之前菜单标「在途」，还不能做。</div>';
+      html += '<div class="rowi" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn primary" data-act="restock"' + (plan.cost <= 0 ? ' disabled' : '') + ' title="货款马上扣。周一开张的第一单立刻入库；之后约 25 分钟才到">🛒 补货' + (plan.cost > 0 ? ' ' + money(plan.cost) : '') + '</button><button type="button" class="btn" data-act="autoRestock" title="每天早上自动补到目标">🔁 自动 ' + (S.autoRestock ? '开' : '关') + '</button><button type="button" class="btn" data-act="suggest" title="按昨天的用量设目标">📊 按昨日</button></div>';
       return { html };
     },
 
@@ -587,7 +610,7 @@
       const walks = r.walkQueue + r.walkOrder + r.walkFood;
       const sunday = r.dow === 6 && !r.bought;
       const ok = r.cash >= r.rent;
-      const rentBox = r.bought ? '' : '<div class="box ' + (ok ? (sunday ? 'g' : '') : 'r') + '">🏠 ' + (sunday ? '<b>房东来收租</b>　' : '⏳ ' + r.daysLeft + ' 天　') + money(r.cash) + ' / ' + money(r.rent) + meter(r.cash / r.rent, ok ? 'g' : 'r') + (ok ? '' : '<b class="neg">还差 ' + money(r.rent - r.cash) + '</b>') + '</div>';
+      const rentBox = r.bought ? '' : '<div class="box ' + (ok ? (sunday ? 'g' : '') : 'r') + '">🏠 ' + (sunday ? '<b>房东来收租</b>　' : '⏳ ' + (r.rentLeft || r.daysLeft + ' 天') + '　') + money(r.cash) + ' / ' + money(r.rent) + meter(r.cash / r.rent, ok ? 'g' : 'r') + (ok ? '' : '<b class="neg">还差 ' + money(r.rent - r.cash) + '</b>') + '</div>';
       showModal('<h2>🌙 第 ' + r.day + ' 天打烊</h2><p class="sub">第 ' + r.week + ' 周 · ' + C.WEEKDAYS[r.dow] + '</p><div class="tiles">' + tile('💵', money(r.rev), '营业额') + tile('🥬', neg(r.food), '进货') + tile('👥', neg(r.wages), '工资') + tile('💡', neg(r.util + r.repair + r.fines + r.other), '水电杂费') + '</div><dl class="kv"><dt class="tot">今日盈亏</dt><dd class="tot ' + (r.operating < 0 ? 'neg' : 'pos') + '">' + (r.operating < 0 ? '-' : '+') + money(Math.abs(r.operating)) + '</dd>' + (r.build ? '<dt>🔨 建造</dt><dd>' + neg(r.build) + '</dd>' : '') + '</dl><div class="tiles" style="margin-top:8px">' + tile('😊', r.groups + ' 桌', '接待') + tile('😠', walks + ' 桌', '走掉', walks ? 'neg' : '') + tile('⭐', r.dishes ? Math.round(r.scoreSum / r.dishes) : '—', r.dishes + ' 道均分') + tile('🗑️', money(r.waste), '损耗', r.waste >= 30 ? 'neg' : '') + '</div>' + (r.quits.length ? '<div class="box r">' + r.quits.join('、') + ' 辞职了</div>' : '') + (r.hint ? '<p style="margin-top:8px">💡 ' + esc(r.hint) + '</p>' : '') + rentBox + '<div class="actions"><button type="button" class="btn primary" data-act="dayNext">' + (sunday ? '🏠 交房租' : '☀️ 下一天') + '</button></div>');
     } else if (m.type === 'rent') {
       const est = sim.estimateWeeks(S);
@@ -617,57 +640,91 @@
   }
 
   // ================= 引导（第一天） =================
+  // show：这一刻才该出现。miss：时刻已经过去，直接跳过，禁止补播到下一阶段。
+  // 备菜步骤一旦进入午市就作废；「第一单」只活在它真正发生的那一市里。
+  const PHASE_RANK = { prep: 0, lunch: 1, break: 2, dinner: 3, close: 4 };
+  const prepOver = (S) => S.day > 1 || sim.inService(S);
+  const hasStock = (S) => MR.ING_ORDER.some((k) => sim.stockQty(S, k) > 0);
   const TUT = [
-    { text: '左下角是命脉：💰 现金、🏠 本周房租（周日 22:00 扣，不够就倒闭）、🧾 扣租后结余。🧾 变红就危险。', hl: '#tl', btn: '知道了' },
-    { text: '先进货：点 📦 →「🛒 补货」。', hl: '#nav [data-sheet="stock"]', until: (S) => S.deliveries.length > 0 || MR.ING_ORDER.some((k) => sim.stockQty(S, k) > 0) },
-    { text: '点 👥 看工作表：数字越小越先做，✕ 是不做。点格子就能改。', hl: '#nav [data-sheet="staff"]', until: () => UI.sheet === 'staff' || UI.flags.viewedStaff, skip: '跳过' },
-    { text: '试一次摆放：🔨 建造 → 等待椅（¥120）→ 点堂食地面。绿色可放，红色不行。', hl: '#nav [data-sheet="build"]', until: (S) => (S.flags.placed || 0) > 0, skip: '不买，跳过' },
-    { text: '开门：点右下角橙色 ▶（或按空格）。11:00 午市开始。', hl: '#play', until: () => UI.speed > 0 },
-    { when: (S) => S.flags.ordered, text: '第一单来了。底栏这排数字是各工位排着几单，哪个大，瓶颈就在哪。', hl: '#rail', btn: '知道了' },
-    { when: (S) => S.flags.rated, text: '菜上桌了，飘出来的是综合分。📒 →「评价」能看五项细分。', hl: '#nav [data-sheet="ledger"]', until: () => UI.flags.viewedRatings, skip: '以后再看', enter: () => (UI.tab.ledger = 'rate') },
-    { when: (S) => S.day >= 2, text: '日结不扣租，真正的坎是周日 22:00。之后看左边的目标，点 ▼ 展开。', btn: '开始经营' },
+    { text: '左下角是命脉：💰 现金、🏠 本周房租（周日 22:00 扣，不够就倒闭）、🧾 扣租后结余。🧾 变红就危险。', hl: '#tl', btn: '知道了', miss: prepOver },
+    { text: '先进货：点 📦 →「🛒 补货」。钱马上扣，开张这一单直接入库。以后再补大约 25 分钟才到，到之前标着「在途」。', hl: '#nav [data-sheet="stock"]', until: hasStock, miss: prepOver, onMiss: (S) => sim.ensureOpeningStock(S) },
+    { text: '点 👥 看工作表：数字越小越先做，✕ 是不做。点格子就能改。', hl: '#nav [data-sheet="staff"]', until: () => UI.sheet === 'staff' || UI.flags.viewedStaff, skip: '跳过', miss: prepOver },
+    { text: '试一次摆放：🔨 建造 → 等待椅（¥120）→ 点堂食地面。绿色可放，红色不行。', hl: '#nav [data-sheet="build"]', until: (S) => (S.flags.placed || 0) > 0, skip: '不买，跳过', miss: prepOver },
+    { text: '开门：点右下角橙色 ▶（或按空格）。11:00 午市开始。', hl: '#play', until: () => UI.speed > 0, miss: prepOver },
+    {
+      text: '第一单来了。底栏这排数字是各工位排着几单，哪个大，瓶颈就在哪。',
+      hl: '#rail',
+      btn: '知道了',
+      show: (S) => S.day === 1 && !!S.flags.ordered && sim.phase(S) === S.flags.orderedPhase,
+      miss: (S) => S.day > 1 || (!!S.flags.ordered && sim.phase(S) !== S.flags.orderedPhase) || (PHASE_RANK[sim.phase(S)] >= PHASE_RANK.close && !S.flags.ordered),
+    },
+    {
+      text: '菜上桌了，飘出来的是综合分。📒 →「评价」能看五项细分。',
+      hl: '#nav [data-sheet="ledger"]',
+      until: () => UI.flags.viewedRatings,
+      skip: '以后再看',
+      enter: () => (UI.tab.ledger = 'rate'),
+      show: (S) => S.day === 1 && !!S.flags.rated && sim.phase(S) === S.flags.ratedPhase,
+      miss: (S) => S.day > 1 || (!!S.flags.rated && sim.phase(S) !== S.flags.ratedPhase) || (sim.phase(S) === 'close' && !S.flags.rated),
+    },
+    {
+      text: '日结不扣租，真正的坎是周日 22:00。今天先停着，点「开始经营」再走表。之后看左边的目标，点 ▼ 展开。',
+      hl: '#play',
+      btn: '开始经营',
+      start: true,
+      show: (S) => S.day >= 2 && UI.speed === 0 && !sim.inService(S),
+      miss: (S) => S.day >= 2 && (UI.speed > 0 || sim.inService(S)),
+    },
   ];
   UI.coach = function () {
     const S = UI.S;
     const box = $('#coach');
-    if (!S || S.tut.done || S.over) {
-      if (!box.hidden) {
-        box.hidden = true;
-        clearHl();
+    if (!S || !S.tut || S.tut.done || S.over) {
+      if (box && !box.hidden) hideCoach();
+      return;
+    }
+    let guard = 0;
+    while (S.tut.step < TUT.length && guard++ < TUT.length + 2) {
+      const st = TUT[S.tut.step];
+      if (st.until && st.until(S)) {
+        nextTut();
+        continue;
       }
-      return;
-    }
-    const st = TUT[S.tut.step];
-    if (!st) {
-      S.tut.done = true;
-      return;
-    }
-    if (st.when && !st.when(S)) {
-      box.hidden = true;
-      clearHl();
-      return;
-    }
-    if (st.until && st.until(S)) return nextTut();
-    if (cache.tut !== S.tut.step) {
-      if (st.enter) st.enter();
-      box.innerHTML = iconize('<div>' + st.text + '</div><div class="row"><button type="button" data-act="tutEnd">关掉引导</button>' + (st.skip ? '<button type="button" data-act="tutNext">' + st.skip + '</button>' : '') + (st.btn ? '<button type="button" class="go" data-act="tutNext">' + st.btn + '</button>' : '') + '</div>');
-      clearHl();
-      cache.tut = S.tut.step;
-      if (st.hl) {
-        const el = $(st.hl);
-        if (el) el.classList.add('hl');
+      if (st.miss && st.miss(S)) {
+        if (st.onMiss) st.onMiss(S);
+        nextTut();
+        continue;
       }
+      if (st.show && !st.show(S)) {
+        hideCoach();
+        return;
+      }
+      if (cache.tut !== S.tut.step) {
+        if (st.enter) st.enter();
+        box.innerHTML = iconize('<div>' + st.text + '</div><div class="row"><button type="button" data-act="tutEnd">关掉引导</button>' + (st.skip ? '<button type="button" data-act="tutNext">' + st.skip + '</button>' : '') + (st.btn ? '<button type="button" class="go" data-act="tutNext">' + st.btn + '</button>' : '') + '</div>');
+        for (const el of document.querySelectorAll('.hl')) el.classList.remove('hl');
+        cache.tut = S.tut.step;
+        if (st.hl) {
+          const el = $(st.hl);
+          if (el) el.classList.add('hl');
+        }
+      }
+      box.hidden = false;
+      return;
     }
-    box.hidden = false;
+    S.tut.done = true;
+    hideCoach();
   };
-  function clearHl() {
+  function hideCoach() {
+    const box = $('#coach');
+    if (box) box.hidden = true;
     for (const el of document.querySelectorAll('.hl')) el.classList.remove('hl');
-    cache.tut = null;
   }
   function nextTut() {
     const S = UI.S;
     S.tut.step++;
-    clearHl();
+    cache.tut = null;
+    for (const el of document.querySelectorAll('.hl')) el.classList.remove('hl');
     if (S.tut.step >= TUT.length) S.tut.done = true;
   }
 
@@ -869,8 +926,11 @@
     },
     dayNext() {
       closeModal();
+      const hold = UI.S.tut && !UI.S.tut.done;
       sim.proceed(UI.S);
       UI.flags.dayClosed = true;
+      // 引导还停在「开始经营」时，不要让第二天自己跑进午市。
+      if (hold) UI.setSpeed(0);
     },
     choose(d) {
       const m = UI.modal;
@@ -878,6 +938,8 @@
       sim.choose(UI.S, m, Number(d.i));
     },
     tutNext() {
+      const st = TUT[UI.S.tut.step];
+      if (st && st.start) UI.setSpeed(UI.lastSpeed || 1);
       nextTut();
     },
     tutEnd() {
